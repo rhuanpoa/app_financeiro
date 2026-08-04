@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#22241d;font-family:'Manrope',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#1f8a5b;text-decoration:none}a:hover{color:#146a45}
+::-webkit-scrollbar{width:0;height:0}
+input,select,textarea,button{font-family:inherit}
+input:focus,select:focus{border-color:#14342b !important}
+@keyframes toastin{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes screenin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.mono{font-family:'IBM Plex Mono',monospace;font-feature-settings:"tnum"}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+<div style="width:390px;height:824px;background:#f4f3ee;border-radius:46px;box-shadow:0 30px 90px rgba(0,0,0,.45),0 0 0 12px #0d0d0d,0 0 0 14px #2c2c2c;position:relative;overflow:hidden;display:flex;flex-direction:column">
+
+<div style="height:46px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 6px;flex:none">
+<span class="mono" style="font-size:14px;font-weight:600;color:#191c17">9:41</span>
+<div style="width:118px;height:30px;background:#0d0d0d;border-radius:0 0 20px 20px;position:absolute;left:50%;transform:translateX(-50%);top:0"></div>
+<div style="display:flex;gap:5px;align-items:center;color:#191c17;font-size:11px;font-weight:700">
+<span style="letter-spacing:1px">••••</span><span>􀙇</span><span style="width:22px;height:11px;border:1.5px solid #191c17;border-radius:3px;display:inline-block;position:relative"><span style="position:absolute;inset:1.5px;right:6px;background:#191c17;border-radius:1px"></span></span>
+</div>
+</div>
+
+<div style="flex:1;overflow-y:auto;padding:4px 20px 104px">
+
+<sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+<div style="animation:screenin .28s ease">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 2px 18px">
+<div><div style="font-size:14px;color:#8a8c80;font-weight:600">{{ greeting }}</div><div style="font-size:22px;font-weight:800;color:#191c17;letter-spacing:-.02em">Suas finanças</div></div>
+<div onClick="{{ goMais }}" style="width:42px;height:42px;border-radius:14px;background:#fff;border:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;cursor:pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="#191c17"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+</div>
+</div>
+
+<div style="background:#14342b;border-radius:24px;padding:22px 22px 20px;color:#e9ede3;box-shadow:0 12px 30px rgba(20,52,43,.28)">
+<div style="font-size:13px;color:#9db3a6;font-weight:600;letter-spacing:.02em">Saldo atual</div>
+<div class="mono" style="font-size:34px;font-weight:600;letter-spacing:-.02em;margin-top:4px;color:{{ balanceOnCard }}">{{ balanceFmt }}</div>
+<div style="display:flex;gap:10px;margin-top:18px">
+<div style="flex:1;background:rgba(255,255,255,.07);border-radius:15px;padding:12px 13px">
+<div style="font-size:11px;color:#9db3a6;font-weight:600">Entradas do mês</div>
+<div class="mono" style="font-size:15px;font-weight:600;color:#7fd6a6;margin-top:3px">{{ monthInFmt }}</div>
+</div>
+<div style="flex:1;background:rgba(255,255,255,.07);border-radius:15px;padding:12px 13px">
+<div style="font-size:11px;color:#9db3a6;font-weight:600">Saídas do mês</div>
+<div class="mono" style="font-size:15px;font-weight:600;color:#f0a58f;margin-top:3px">{{ monthOutFmt }}</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;gap:11px;margin-top:16px">
+<div onClick="{{ addOut }}" style="flex:1;background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:18px;padding:15px;cursor:pointer;display:flex;align-items:center;gap:10px">
+<div style="width:36px;height:36px;border-radius:11px;background:#faece7;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c0492f" stroke-width="2.4" stroke-linecap="round"><path d="M12 19V5M5 12l7 7 7-7"/></svg></div>
+<div><div style="font-size:14px;font-weight:700;color:#191c17">Saída</div><div style="font-size:11px;color:#8a8c80">Registrar gasto</div></div>
+</div>
+<div onClick="{{ addIn }}" style="flex:1;background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:18px;padding:15px;cursor:pointer;display:flex;align-items:center;gap:10px">
+<div style="width:36px;height:36px;border-radius:11px;background:#e5f2ea;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1f8a5b" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12l7-7 7 7"/></svg></div>
+<div><div style="font-size:14px;font-weight:700;color:#191c17">Entrada</div><div style="font-size:11px;color:#8a8c80">Registrar receita</div></div>
+</div>
+</div>
+
+<sc-if value="{{ hasParcelas }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ goParc }}" style="margin-top:16px;background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:18px;padding:16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+<div><div style="font-size:13px;font-weight:700;color:#191c17">Parcelas deste mês</div><div style="font-size:12px;color:#8a8c80;margin-top:2px">{{ parcCount }} compra(s) parcelada(s)</div></div>
+<div class="mono" style="font-size:17px;font-weight:600;color:#c0492f">{{ instThisMonthFmt }}</div>
+</div>
+</sc-if>
+
+<div onClick="{{ goProj }}" style="margin-top:16px;background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:20px;padding:18px;cursor:pointer">
+<div style="display:flex;justify-content:space-between;align-items:baseline">
+<div style="font-size:13px;font-weight:700;color:#191c17">Previsão · 12 meses</div>
+<div style="font-size:11px;color:#8a8c80;font-weight:600">ver detalhes ›</div>
+</div>
+<div class="mono" style="font-size:24px;font-weight:600;color:{{ proj12Color }};margin-top:6px;letter-spacing:-.02em">{{ proj12Fmt }}</div>
+<div style="display:flex;align-items:flex-end;gap:3px;height:56px;margin-top:12px">
+<sc-for list="{{ projBarsView }}" as="b" hint-placeholder-count="13">
+<div style="flex:1;background:{{ b.softColor }};height:{{ b.h }};border-radius:4px 4px 2px 2px"></div>
+</sc-for>
+</div>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin:24px 2px 12px">
+<div style="font-size:15px;font-weight:800;color:#191c17">Últimos lançamentos</div>
+<sc-if value="{{ hasTx }}" hint-placeholder-val="{{ false }}"><div onClick="{{ goHist }}" style="font-size:12px;color:#14342b;font-weight:700;cursor:pointer">Ver tudo</div></sc-if>
+</div>
+<sc-if value="{{ hasTx }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ recentTx }}" as="t" hint-placeholder-count="4">
+<div style="background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:12px">
+<div style="width:38px;height:38px;border-radius:12px;background:{{ t.tint }};display:flex;align-items:center;justify-content:center;flex:none"><div style="width:11px;height:11px;border-radius:50%;background:{{ t.dot }}"></div></div>
+<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:#191c17;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.note }}</div><div style="font-size:11px;color:#8a8c80;margin-top:1px">{{ t.category }} · {{ t.dateFmt }}{{ t.fixedTag }}</div></div>
+<div class="mono" style="font-size:14px;font-weight:600;color:{{ t.amountColor }};white-space:nowrap">{{ t.amountFmt }}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ noTx }}" hint-placeholder-val="{{ false }}">
+<div style="background:#fff;border:1px dashed rgba(0,0,0,.14);border-radius:20px;padding:30px 22px;text-align:center">
+<div style="font-size:15px;font-weight:700;color:#191c17">Nada registrado ainda</div>
+<div style="font-size:13px;color:#8a8c80;margin-top:5px;line-height:1.5">Toque em <b style="color:#14342b">Saída</b> ou <b style="color:#14342b">Entrada</b> acima para começar a controlar seu dinheiro.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasGoals }}" hint-placeholder-val="{{ false }}">
+<div style="font-size:15px;font-weight:800;color:#191c17;margin:24px 2px 12px">Metas</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ goalsView }}" as="g" hint-placeholder-count="1">
+<div style="background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:16px;padding:14px 16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:14px;font-weight:700;color:#191c17">{{ g.name }}</div><div class="mono" style="font-size:12px;color:#8a8c80">{{ g.savedFmt }} / {{ g.targetFmt }}</div></div>
+<div style="height:8px;background:#eceae3;border-radius:6px;margin-top:9px;overflow:hidden"><div style="height:100%;width:{{ g.pctStr }};background:#1f8a5b;border-radius:6px"></div></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAdd }}" hint-placeholder-val="{{ false }}">
+<div style="animation:screenin .28s ease">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px 16px">
+<div style="font-size:20px;font-weight:800;color:#191c17">Novo lançamento</div>
+<div onClick="{{ goDash }}" style="width:38px;height:38px;border-radius:12px;background:#fff;border:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#74766d">✕</div>
+</div>
+<div style="display:flex;background:#eceae3;border-radius:14px;padding:4px;margin-bottom:20px">
+<div onClick="{{ typeOut }}" style="flex:1;text-align:center;padding:10px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;background:{{ outTabBg }};color:{{ outTabColor }};box-shadow:{{ outTabShadow }}">Saída</div>
+<div onClick="{{ typeIn }}" style="flex:1;text-align:center;padding:10px;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;background:{{ inTabBg }};color:{{ inTabColor }};box-shadow:{{ inTabShadow }}">Entrada</div>
+</div>
+
+<div style="text-align:center;margin:8px 0 22px">
+<div style="font-size:13px;color:#8a8c80;font-weight:600;margin-bottom:4px">Valor</div>
+<div style="display:inline-flex;align-items:center;gap:6px">
+<span class="mono" style="font-size:26px;font-weight:500;color:#b4b6ab">R$</span>
+<input class="mono" inputmode="decimal" placeholder="0,00" value="{{ amountVal }}" onChange="{{ onAmount }}" style="width:180px;border:none;background:none;outline:none;font-size:42px;font-weight:600;color:{{ amountColor }};text-align:center;padding:0">
+</div>
+</div>
+
+<div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 10px">Categoria</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px">
+<sc-for list="{{ addCats }}" as="c" hint-placeholder-count="8">
+<div onClick="{{ c.pick }}" style="{{ c.chipStyle }}"><div style="width:9px;height:9px;border-radius:50%;background:{{ c.color }}"></div>{{ c.name }}</div>
+</sc-for>
+</div>
+
+<div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 8px">Descrição (opcional)</div>
+<input placeholder="Ex: Almoço com a equipe" value="{{ noteVal }}" onChange="{{ onNote }}" style="width:100%;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:13px;padding:14px;font-size:15px;color:#191c17;outline:none;margin-bottom:16px">
+
+<div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 8px">Data</div>
+<input type="date" value="{{ dateVal }}" onChange="{{ onDate }}" style="width:100%;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:13px;padding:14px;font-size:15px;color:#191c17;outline:none;margin-bottom:16px">
+
+<div onClick="{{ toggleFixed }}" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:14px 16px;cursor:pointer;margin-bottom:26px">
+<div><div style="font-size:14px;font-weight:700;color:#191c17">Repete todo mês</div><div style="font-size:12px;color:#8a8c80;margin-top:1px">Salário, aluguel, assinaturas…</div></div>
+<div style="width:46px;height:27px;border-radius:14px;background:{{ fixedTrack }};position:relative;transition:.2s;flex:none"><div style="position:absolute;top:3px;left:{{ fixedKnob }};width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:.2s"></div></div>
+</div>
+
+<div onClick="{{ saveTx }}" style="background:#14342b;color:#f4f3ee;text-align:center;padding:17px;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(20,52,43,.25)">Salvar {{ saveWord }}</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isParc }}" hint-placeholder-val="{{ false }}">
+<div style="animation:screenin .28s ease">
+<div style="padding:8px 2px 16px"><div style="font-size:22px;font-weight:800;color:#191c17">Compras parceladas</div><div style="font-size:13px;color:#8a8c80;margin-top:2px">Acompanhe o que ainda falta pagar</div></div>
+<div onClick="{{ goParcAdd }}" style="background:#fff;border:1.5px dashed rgba(20,52,43,.3);color:#14342b;text-align:center;padding:15px;border-radius:16px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px">+ Nova compra parcelada</div>
+<sc-if value="{{ hasParcelas }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ parcelasView }}" as="p" hint-placeholder-count="2">
+<div style="background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:20px;padding:17px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div style="display:flex;gap:11px;align-items:center"><div style="width:40px;height:40px;border-radius:12px;background:{{ p.tint }};display:flex;align-items:center;justify-content:center"><div style="width:12px;height:12px;border-radius:50%;background:{{ p.dot }}"></div></div>
+<div><div style="font-size:15px;font-weight:700;color:#191c17">{{ p.description }}</div><div style="font-size:11px;color:#8a8c80;margin-top:1px">{{ p.card }} · vence dia {{ p.dueDay }}</div></div></div>
+<div onClick="{{ p.del }}" style="font-size:13px;color:#c9ccc0;cursor:pointer;padding:2px 4px">✕</div>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:14px">
+<div><div style="font-size:11px;color:#8a8c80;font-weight:600">Parcela</div><div class="mono" style="font-size:17px;font-weight:600;color:#191c17">{{ p.perFmt }}</div></div>
+<div style="text-align:right"><div style="font-size:11px;color:#8a8c80;font-weight:600">Falta pagar</div><div class="mono" style="font-size:15px;font-weight:600;color:#c0492f">{{ p.remainFmt }}</div></div>
+</div>
+<div style="height:8px;background:#eceae3;border-radius:6px;margin-top:12px;overflow:hidden"><div style="height:100%;width:{{ p.pctStr }};background:#14342b;border-radius:6px"></div></div>
+<div style="display:flex;justify-content:space-between;margin-top:7px;font-size:11px;color:#8a8c80;font-weight:600"><span>{{ p.paid }} de {{ p.parcels }} pagas</span><span>total {{ p.totalFmt }}</span></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ noParcelas }}" hint-placeholder-val="{{ true }}">
+<div style="background:#fff;border:1px dashed rgba(0,0,0,.14);border-radius:20px;padding:30px 22px;text-align:center"><div style="font-size:15px;font-weight:700;color:#191c17">Nenhuma compra parcelada</div><div style="font-size:13px;color:#8a8c80;margin-top:5px;line-height:1.5">Cadastre uma compra no cartão para ver quanto sobra dela nos próximos meses.</div></div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isParcAdd }}" hint-placeholder-val="{{ false }}">
+<div style="animation:screenin .28s ease">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px 18px"><div style="font-size:20px;font-weight:800;color:#191c17">Nova compra parcelada</div><div onClick="{{ goParc }}" style="width:38px;height:38px;border-radius:12px;background:#fff;border:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#74766d">✕</div></div>
+<div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 8px">Descrição</div>
+<input placeholder="Ex: Notebook novo" value="{{ pDescVal }}" onChange="{{ onPDesc }}" style="width:100%;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:13px;padding:14px;font-size:15px;color:#191c17;outline:none;margin-bottom:16px">
+<div style="display:flex;gap:12px;margin-bottom:16px">
+<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 8px">Valor total</div><input class="mono" inputmode="decimal" placeholder="0,00" value="{{ pTotalVal }}" onChange="{{ onPTotal }}" style="width:100%;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:13px;padding:14px;font-size:15px;color:#191c17;outline:none"></div>
+<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 8px">Nº parcelas</div><input class="mono" inputmode="numeric" placeholder="12" value="{{ pParcelsVal }}" onChange="{{ onPParcels }}" style="width:100%;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:13px;padding:14px;font-size:15px;color:#191c17;outline:none"></div>
+</div>
+<div style="background:#e5f2ea;border-radius:13px;padding:12px 15px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;font-weight:600;color:#14342b">Valor de cada parcela</span><span class="mono" style="font-size:16px;font-weight:600;color:#14342b">{{ pPerFmt }}</span></div>
+<div style="display:flex;gap:12px;margin-bottom:16px">
+<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 8px">1ª parcela em</div><input type="month" value="{{ pFirstVal }}" onChange="{{ onPFirst }}" style="width:100%;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:13px;padding:14px;font-size:15px;color:#191c17;outline:none"></div>
+<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 8px">Dia venc.</div><input class="mono" inputmode="numeric" placeholder="10" value="{{ pDueVal }}" onChange="{{ onPDue }}" style="width:100%;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:13px;padding:14px;font-size:15px;color:#191c17;outline:none"></div>
+</div>
+<div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 8px">Cartão</div>
+<input placeholder="Ex: Nubank" value="{{ pCardVal }}" onChange="{{ onPCard }}" style="width:100%;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:13px;padding:14px;font-size:15px;color:#191c17;outline:none;margin-bottom:16px">
+<div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 10px">Categoria</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px">
+<sc-for list="{{ parcelaCats }}" as="c" hint-placeholder-count="8"><div onClick="{{ c.pick }}" style="{{ c.chipStyle }}"><div style="width:9px;height:9px;border-radius:50%;background:{{ c.color }}"></div>{{ c.name }}</div></sc-for>
+</div>
+<div onClick="{{ saveParcela }}" style="background:#14342b;color:#f4f3ee;text-align:center;padding:17px;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(20,52,43,.25)">Cadastrar compra</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isProj }}" hint-placeholder-val="{{ false }}">
+<div style="animation:screenin .28s ease">
+<div style="padding:8px 2px 16px"><div style="font-size:22px;font-weight:800;color:#191c17">Previsão</div><div style="font-size:13px;color:#8a8c80;margin-top:2px">Projeção do seu saldo nos próximos 12 meses</div></div>
+<div style="background:#14342b;border-radius:22px;padding:20px;color:#e9ede3">
+<div style="font-size:13px;color:#9db3a6;font-weight:600">Saldo estimado em 12 meses</div>
+<div class="mono" style="font-size:30px;font-weight:600;color:{{ proj12OnCard }};margin-top:3px">{{ proj12Fmt }}</div>
+<div style="display:flex;align-items:flex-end;gap:5px;height:96px;margin-top:18px">
+<sc-for list="{{ projBarsView }}" as="b" hint-placeholder-count="13">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:100%;background:{{ b.barColor }};height:{{ b.h }};border-radius:5px 5px 2px 2px"></div><div style="font-size:8px;color:#8ba295;font-weight:600;writing-mode:vertical-rl;transform:rotate(180deg);height:22px">{{ b.label }}</div></div>
+</sc-for>
+</div>
+</div>
+<div style="background:#fdf6ec;border:1px solid #f0e2cc;border-radius:16px;padding:14px 16px;margin-top:14px;font-size:12px;color:#7a6a4a;line-height:1.5">Cálculo por mês: <b>entradas fixas</b> − gastos fixos − parcelas do mês − média de gastos variáveis (R$ {{ avgVarFmt }}/mês).</div>
+<div style="font-size:15px;font-weight:800;color:#191c17;margin:22px 2px 12px">Mês a mês</div>
+<div style="display:flex;flex-direction:column;gap:9px">
+<sc-for list="{{ projDetail }}" as="d" hint-placeholder-count="6">
+<div style="background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:16px;padding:14px 16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:14px;font-weight:700;color:#191c17">{{ d.label }}</div><div class="mono" style="font-size:16px;font-weight:600;color:{{ d.balColor }}">{{ d.balanceFmt }}</div></div>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:11px;font-weight:600"><span style="color:#1f8a5b">{{ d.incomeFmt }} entra</span><span style="color:#c0492f">{{ d.fixedFmt }} fixo</span><span style="color:#c0492f">{{ d.instFmt }} parcelas</span><span style="color:#c0492f">{{ d.varFmt }} variável</span></div>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{ noProjData }}" hint-placeholder-val="{{ false }}"><div style="background:#fff;border:1px dashed rgba(0,0,0,.14);border-radius:16px;padding:20px;text-align:center;font-size:13px;color:#8a8c80;margin-top:10px;line-height:1.5">Cadastre entradas fixas (marque <b>“repete todo mês”</b>) e gastos para a previsão ganhar precisão.</div></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isHist }}" hint-placeholder-val="{{ false }}">
+<div style="animation:screenin .28s ease">
+<div style="padding:8px 2px 16px"><div style="font-size:22px;font-weight:800;color:#191c17">Histórico</div><div style="font-size:13px;color:#8a8c80;margin-top:2px">Tudo o que entrou e saiu</div></div>
+<sc-if value="{{ hasTx }}" hint-placeholder-val="{{ true }}">
+<sc-for list="{{ historyGroups }}" as="g" hint-placeholder-count="2">
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin:14px 4px 10px"><div style="font-size:13px;font-weight:700;color:#191c17">{{ g.label }}</div><div class="mono" style="font-size:13px;font-weight:600;color:{{ g.totalColor }}">{{ g.totalFmt }}</div></div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ g.items }}" as="t" hint-placeholder-count="3">
+<div style="background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:16px;padding:12px 15px;display:flex;align-items:center;gap:12px">
+<div style="width:36px;height:36px;border-radius:11px;background:{{ t.tint }};display:flex;align-items:center;justify-content:center;flex:none"><div style="width:10px;height:10px;border-radius:50%;background:{{ t.dot }}"></div></div>
+<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:#191c17;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.note }}</div><div style="font-size:11px;color:#8a8c80">{{ t.category }} · {{ t.dateFmt }}{{ t.fixedTag }}</div></div>
+<div class="mono" style="font-size:14px;font-weight:600;color:{{ t.amountColor }}">{{ t.amountFmt }}</div>
+<div onClick="{{ t.del }}" style="font-size:12px;color:#c9ccc0;cursor:pointer;padding:2px 2px 2px 6px">✕</div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</sc-if>
+<sc-if value="{{ noTx }}" hint-placeholder-val="{{ false }}"><div style="background:#fff;border:1px dashed rgba(0,0,0,.14);border-radius:20px;padding:30px;text-align:center;font-size:13px;color:#8a8c80">Nenhum lançamento ainda.</div></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isCat }}" hint-placeholder-val="{{ false }}">
+<div style="animation:screenin .28s ease">
+<div style="padding:8px 2px 16px"><div style="font-size:22px;font-weight:800;color:#191c17">Categorias</div><div style="font-size:13px;color:#8a8c80;margin-top:2px">Quanto você gastou em cada uma</div></div>
+<div style="display:flex;flex-direction:column;gap:9px">
+<sc-for list="{{ catList }}" as="c" hint-placeholder-count="8">
+<div style="background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:16px;padding:13px 16px">
+<div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:10px"><div style="width:12px;height:12px;border-radius:50%;background:{{ c.color }}"></div><span style="font-size:14px;font-weight:700;color:#191c17">{{ c.name }}</span></div><span class="mono" style="font-size:14px;font-weight:600;color:{{ c.amountColor }}">{{ c.totalFmt }}</span></div>
+<div style="height:6px;background:#eceae3;border-radius:4px;margin-top:9px;overflow:hidden"><div style="height:100%;width:{{ c.pctStr }};background:{{ c.color }};border-radius:4px"></div></div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isMetas }}" hint-placeholder-val="{{ false }}">
+<div style="animation:screenin .28s ease">
+<div style="padding:8px 2px 16px"><div style="font-size:22px;font-weight:800;color:#191c17">Metas de economia</div><div style="font-size:13px;color:#8a8c80;margin-top:2px">Guarde para seus objetivos</div></div>
+<div onClick="{{ goMetaAdd }}" style="background:#fff;border:1.5px dashed rgba(20,52,43,.3);color:#14342b;text-align:center;padding:15px;border-radius:16px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px">+ Nova meta</div>
+<sc-if value="{{ hasGoals }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ goalsView }}" as="g" hint-placeholder-count="1">
+<div style="background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:20px;padding:17px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:16px;font-weight:800;color:#191c17">{{ g.name }}</div><div style="font-size:12px;color:#8a8c80;margin-top:2px">Faltam {{ g.remainFmt }}</div></div><div onClick="{{ g.del }}" style="font-size:13px;color:#c9ccc0;cursor:pointer;padding:2px 4px">✕</div></div>
+<div style="height:10px;background:#eceae3;border-radius:6px;margin-top:13px;overflow:hidden"><div style="height:100%;width:{{ g.pctStr }};background:#1f8a5b;border-radius:6px"></div></div>
+<div style="display:flex;justify-content:space-between;margin-top:8px"><span class="mono" style="font-size:13px;font-weight:600;color:#1f8a5b">{{ g.savedFmt }}</span><span class="mono" style="font-size:13px;color:#8a8c80">{{ g.targetFmt }}</span></div>
+<div style="display:flex;gap:8px;margin-top:14px">
+<div onClick="{{ g.add50 }}" style="flex:1;text-align:center;padding:10px;border-radius:11px;background:#eef1ea;color:#14342b;font-size:13px;font-weight:700;cursor:pointer">+ R$50</div>
+<div onClick="{{ g.add100 }}" style="flex:1;text-align:center;padding:10px;border-radius:11px;background:#eef1ea;color:#14342b;font-size:13px;font-weight:700;cursor:pointer">+ R$100</div>
+<div onClick="{{ g.add200 }}" style="flex:1;text-align:center;padding:10px;border-radius:11px;background:#eef1ea;color:#14342b;font-size:13px;font-weight:700;cursor:pointer">+ R$200</div>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ noGoals }}" hint-placeholder-val="{{ true }}"><div style="background:#fff;border:1px dashed rgba(0,0,0,.14);border-radius:20px;padding:30px;text-align:center;font-size:13px;color:#8a8c80;line-height:1.5">Nenhuma meta ainda. Crie uma para juntar dinheiro com objetivo.</div></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isMetaAdd }}" hint-placeholder-val="{{ false }}">
+<div style="animation:screenin .28s ease">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 2px 18px"><div style="font-size:20px;font-weight:800;color:#191c17">Nova meta</div><div onClick="{{ goMetas }}" style="width:38px;height:38px;border-radius:12px;background:#fff;border:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#74766d">✕</div></div>
+<div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 8px">Nome da meta</div>
+<input placeholder="Ex: Viagem, Reserva de emergência" value="{{ gNameVal }}" onChange="{{ onGName }}" style="width:100%;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:13px;padding:14px;font-size:15px;color:#191c17;outline:none;margin-bottom:16px">
+<div style="display:flex;gap:12px;margin-bottom:26px">
+<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 8px">Objetivo (R$)</div><input class="mono" inputmode="decimal" placeholder="5000,00" value="{{ gTargetVal }}" onChange="{{ onGTarget }}" style="width:100%;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:13px;padding:14px;font-size:15px;color:#191c17;outline:none"></div>
+<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#74766d;letter-spacing:.03em;text-transform:uppercase;margin:0 2px 8px">Já guardado</div><input class="mono" inputmode="decimal" placeholder="0,00" value="{{ gSavedVal }}" onChange="{{ onGSaved }}" style="width:100%;border:1px solid rgba(0,0,0,.1);background:#fff;border-radius:13px;padding:14px;font-size:15px;color:#191c17;outline:none"></div>
+</div>
+<div onClick="{{ saveGoal }}" style="background:#14342b;color:#f4f3ee;text-align:center;padding:17px;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(20,52,43,.25)">Criar meta</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isMais }}" hint-placeholder-val="{{ false }}">
+<div style="animation:screenin .28s ease">
+<div style="padding:8px 2px 16px"><div style="font-size:22px;font-weight:800;color:#191c17">Mais</div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div onClick="{{ goHist }}" style="background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:18px;padding:18px;cursor:pointer"><div style="width:40px;height:40px;border-radius:12px;background:#eef1ea;display:flex;align-items:center;justify-content:center;margin-bottom:12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14342b" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div><div style="font-size:14px;font-weight:700;color:#191c17">Histórico</div><div style="font-size:11px;color:#8a8c80;margin-top:2px">Todos os lançamentos</div></div>
+<div onClick="{{ goCat }}" style="background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:18px;padding:18px;cursor:pointer"><div style="width:40px;height:40px;border-radius:12px;background:#eef1ea;display:flex;align-items:center;justify-content:center;margin-bottom:12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14342b" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v8.5l6 3" stroke-linecap="round"/></svg></div><div style="font-size:14px;font-weight:700;color:#191c17">Categorias</div><div style="font-size:11px;color:#8a8c80;margin-top:2px">Gasto por categoria</div></div>
+<div onClick="{{ goMetas }}" style="background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:18px;padding:18px;cursor:pointer"><div style="width:40px;height:40px;border-radius:12px;background:#eef1ea;display:flex;align-items:center;justify-content:center;margin-bottom:12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14342b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/></svg></div><div style="font-size:14px;font-weight:700;color:#191c17">Metas</div><div style="font-size:11px;color:#8a8c80;margin-top:2px">Objetivos de economia</div></div>
+<div onClick="{{ goParc }}" style="background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:18px;padding:18px;cursor:pointer"><div style="width:40px;height:40px;border-radius:12px;background:#eef1ea;display:flex;align-items:center;justify-content:center;margin-bottom:12px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14342b" stroke-width="2" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 13l9 5 9-5" stroke-linecap="round"/></svg></div><div style="font-size:14px;font-weight:700;color:#191c17">Parcelas</div><div style="font-size:11px;color:#8a8c80;margin-top:2px">Compras no cartão</div></div>
+</div>
+<div onClick="{{ clearAll }}" style="margin-top:20px;text-align:center;font-size:13px;color:#c0492f;font-weight:700;cursor:pointer;padding:12px">Apagar todos os dados</div>
+<div style="text-align:center;font-size:11px;color:#b4b6ab;margin-top:8px">Seus dados ficam salvos só neste aparelho.</div>
+</div>
+</sc-if>
+
+</div>
+
+<sc-if value="{{ toastShow }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;bottom:100px;left:50%;transform:translateX(-50%);background:#191c17;color:#f4f3ee;padding:12px 22px;border-radius:30px;font-size:13px;font-weight:600;white-space:nowrap;animation:toastin .25s ease;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:20">{{ toast }}</div>
+</sc-if>
+
+<div style="position:absolute;left:0;right:0;bottom:0;height:86px;background:rgba(244,243,238,.94);backdrop-filter:blur(14px);border-top:1px solid rgba(0,0,0,.06);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;padding-bottom:14px">
+<div onClick="{{ goDash }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="{{ navHome }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg><span style="font-size:10px;font-weight:700;color:{{ navHome }}">Início</span></div>
+<div onClick="{{ goProj }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="{{ navProj }}" stroke-width="2" stroke-linecap="round"><path d="M4 20V11M10 20V4M16 20v-6M22 20H2"/></svg><span style="font-size:10px;font-weight:700;color:{{ navProj }}">Previsão</span></div>
+<div style="display:flex;justify-content:center"><div onClick="{{ addOut }}" style="width:56px;height:56px;border-radius:20px;background:#14342b;display:flex;align-items:center;justify-content:center;margin-top:-26px;box-shadow:0 10px 24px rgba(20,52,43,.4);cursor:pointer"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f4f3ee" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div></div>
+<div onClick="{{ goParc }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="{{ navParc }}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 13l9 5 9-5"/></svg><span style="font-size:10px;font-weight:700;color:{{ navParc }}">Parcelas</span></div>
+<div onClick="{{ goMais }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer"><svg width="23" height="23" viewBox="0 0 24 24" fill="{{ navMais }}"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg><span style="font-size:10px;font-weight:700;color:{{ navMais }}">Mais</span></div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  CATS = [
+    {name:'Alimentação',color:'#d9822b'},{name:'Mercado',color:'#2f9e6f'},
+    {name:'Gasolina',color:'#c0492f'},{name:'Uber',color:'#6b57c9'},
+    {name:'Lazer',color:'#c94f97'},{name:'Compra virtual',color:'#3b76c9'},
+    {name:'Moradia',color:'#b08427'},{name:'Contas',color:'#7a9a2e'},
+    {name:'Saúde',color:'#2b9a9e'},{name:'Assinaturas',color:'#8b5cc9'},
+    {name:'Educação',color:'#4a7dc9'},{name:'Outros',color:'#8a8c80'}
+  ];
+  INCOME_CATS = [
+    {name:'Salário',color:'#1f8a5b'},{name:'Freelance',color:'#2b9a9e'},
+    {name:'Investimentos',color:'#3b76c9'},{name:'Vendas',color:'#d9822b'},
+    {name:'Reembolso',color:'#6b57c9'},{name:'Outros',color:'#8a8c80'}
+  ];
+  M = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  state = this.load();
+
+  load(){
+    let d = {tx:[],parcelas:[],goals:[]};
+    try{ const s=localStorage.getItem('fin_v1'); if(s) d=Object.assign(d,JSON.parse(s)); }catch(e){}
+    return {screen:'dash', addType:'out', toast:'', forms:this.blank(), tx:d.tx||[], parcelas:d.parcelas||[], goals:d.goals||[]};
+  }
+  blank(){
+    const t=new Date().toISOString().slice(0,10), m=new Date().toISOString().slice(0,7);
+    return {
+      out:{amount:'',category:'',note:'',date:t,fixed:false},
+      in:{amount:'',category:'',note:'',date:t,fixed:false},
+      parcela:{description:'',total:'',parcels:'',dueDay:'',firstDue:m,card:'',category:''},
+      goal:{name:'',target:'',saved:''}
+    };
+  }
+  persist(st){ try{ localStorage.setItem('fin_v1', JSON.stringify({tx:st.tx,parcelas:st.parcelas,goals:st.goals})); }catch(e){} }
+  save(mut){ this.setState(s=>{ const ns=mut(s); this.persist(Object.assign({},s,ns)); return ns; }); }
+  fmt(n){ return 'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  fmt0(n){ const v=Math.round(n||0); return 'R$ '+v.toLocaleString('pt-BR'); }
+  parse(v){ if(typeof v==='number')return v; if(!v)return 0; return parseFloat(String(v).replace(/\s/g,'').replace(/\.(?=\d{3})/g,'').replace(',','.'))||0; }
+  color(name){ const a=[...this.CATS,...this.INCOME_CATS].find(c=>c.name===name); return a?a.color:'#8a8c80'; }
+  tint(hex){ return hex+'1c'; }
+
+  go = (s)=>()=>this.setState({screen:s});
+  openAdd = (t)=>()=>this.setState({screen:'add',addType:t});
+  setType = (t)=>()=>this.setState({addType:t});
+  upd(form,field,val){ this.setState(s=>({forms:Object.assign({},s.forms,{[form]:Object.assign({},s.forms[form],{[field]:val})})})); }
+  on = (form,field,cb)=>(e)=>this.upd(form,field, cb?cb(e):e.target.value);
+  showToast(msg){ this.setState({toast:msg}); clearTimeout(this._t); this._t=setTimeout(()=>this.setState({toast:''}),2200); }
+
+  saveTx = ()=>{
+    const t=this.state.addType, f=this.state.forms[t], amt=this.parse(f.amount);
+    if(!amt||!f.category){ this.showToast('Preencha valor e categoria'); return; }
+    const tx={id:Date.now(),type:t,amount:amt,category:f.category,note:(f.note||'').trim(),date:f.date,fixed:!!f.fixed};
+    this.save(s=>({tx:[...s.tx,tx],forms:Object.assign({},s.forms,{[t]:this.blank()[t]}),screen:'dash'}));
+    this.showToast(t==='out'?'Gasto registrado ✓':'Entrada registrada ✓');
+  };
+  saveParcela = ()=>{
+    const f=this.state.forms.parcela, total=this.parse(f.total), parcels=parseInt(f.parcels)||0;
+    if(!total||!parcels||!f.category){ this.showToast('Preencha valor, parcelas e categoria'); return; }
+    const p={id:Date.now(),description:(f.description||'').trim()||'Compra parcelada',total,parcels,dueDay:parseInt(f.dueDay)||1,firstDue:f.firstDue,card:(f.card||'').trim(),category:f.category};
+    this.save(s=>({parcelas:[...s.parcelas,p],forms:Object.assign({},s.forms,{parcela:this.blank().parcela}),screen:'parcelas'}));
+    this.showToast('Compra parcelada cadastrada ✓');
+  };
+  saveGoal = ()=>{
+    const f=this.state.forms.goal, target=this.parse(f.target);
+    if(!(f.name||'').trim()||!target){ this.showToast('Preencha nome e objetivo'); return; }
+    const g={id:Date.now(),name:f.name.trim(),target,saved:this.parse(f.saved)};
+    this.save(s=>({goals:[...s.goals,g],forms:Object.assign({},s.forms,{goal:this.blank().goal}),screen:'metas'}));
+    this.showToast('Meta criada ✓');
+  };
+  addToGoal(id,amt){ this.save(s=>({goals:s.goals.map(g=>g.id===id?Object.assign({},g,{saved:Math.min(g.target,g.saved+amt)}):g)})); this.showToast('R$ '+amt+' guardado ✓'); }
+  del(id){ this.save(s=>({tx:s.tx.filter(t=>t.id!==id)})); this.showToast('Removido'); }
+  clearAll = ()=>{ if(confirm('Apagar TODOS os dados? Isso não pode ser desfeito.')){ this.setState({tx:[],parcelas:[],goals:[]},()=>this.persist({tx:[],parcelas:[],goals:[]})); this.showToast('Dados apagados'); } };
+
+  renderVals(){
+    const S=this.state, tx=S.tx, P=S.parcelas, G=S.goals, M=this.M;
+    const fmt=n=>this.fmt(n), fmt0=n=>this.fmt0(n);
+    const now=new Date(), curYM=now.getFullYear()*12+now.getMonth();
+    const h=now.getHours();
+    const greeting = h<12?'Bom dia 👋':h<18?'Boa tarde 👋':'Boa noite 👋';
+
+    const balance = tx.reduce((a,t)=>a+(t.type==='in'?t.amount:-t.amount),0);
+    let monthIn=0,monthOut=0;
+    tx.forEach(t=>{ const d=new Date(t.date); if(d.getFullYear()*12+d.getMonth()===curYM){ if(t.type==='in')monthIn+=t.amount; else monthOut+=t.amount; } });
+    const fixedIn=tx.filter(t=>t.fixed&&t.type==='in').reduce((a,t)=>a+t.amount,0);
+    const fixedOut=tx.filter(t=>t.fixed&&t.type==='out').reduce((a,t)=>a+t.amount,0);
+    const varTx=tx.filter(t=>!t.fixed&&t.type==='out');
+    const span=Math.max(1,new Set(tx.map(t=>{const d=new Date(t.date);return d.getFullYear()+'-'+d.getMonth();})).size);
+    const avgVar=varTx.reduce((a,t)=>a+t.amount,0)/span;
+
+    const instIn=(ym)=>P.reduce((a,p)=>{const[fy,fm]=p.firstDue.split('-').map(Number);const f=fy*12+(fm-1);const i=ym-f;return a+((i>=0&&i<p.parcels)?p.total/p.parcels:0);},0);
+    const instThisMonth=instIn(curYM);
+
+    const txSort = tx.slice().sort((a,b)=>b.id-a.id);
+    const mapTx=(t)=>{ const d=new Date(t.date), isIn=t.type==='in'; return {id:t.id,category:t.category,note:t.note||t.category,dateFmt:d.getDate()+' '+M[d.getMonth()],fixedTag:t.fixed?' · fixo':'',amountFmt:(isIn?'+ ':'− ')+fmt(t.amount),amountColor:isIn?'#1f8a5b':'#c0492f',dot:this.color(t.category),tint:this.tint(this.color(t.category)),del:()=>this.del(t.id)}; };
+    const recentTx = txSort.slice(0,6).map(mapTx);
+
+    const groups={};
+    txSort.forEach(t=>{ const d=new Date(t.date), k=d.getFullYear()+'-'+d.getMonth(); if(!groups[k])groups[k]={ym:d.getFullYear()*12+d.getMonth(),label:M[d.getMonth()]+' de '+d.getFullYear(),items:[],total:0}; groups[k].items.push(mapTx(t)); groups[k].total+=t.type==='in'?t.amount:-t.amount; });
+    const historyGroups=Object.values(groups).sort((a,b)=>b.ym-a.ym).map(g=>({label:g.label,items:g.items,totalFmt:(g.total>=0?'+ ':'− ')+fmt(Math.abs(g.total)),totalColor:g.total>=0?'#1f8a5b':'#c0492f'}));
+
+    const parcelasView=P.map(p=>{ const[fy,fm]=p.firstDue.split('-').map(Number); const first=fy*12+(fm-1); const paid=Math.min(p.parcels,Math.max(0,curYM-first+1)); const remaining=p.parcels-paid; const per=p.total/p.parcels; const pct=Math.round(paid/p.parcels*100); return {id:p.id,description:p.description,card:p.card||'Cartão',category:p.category,dot:this.color(p.category),tint:this.tint(this.color(p.category)),dueDay:p.dueDay,parcels:p.parcels,paid,perFmt:fmt(per),totalFmt:fmt(p.total),remainFmt:fmt(per*remaining),pctStr:pct+'%',del:()=>this.save(s=>({parcelas:s.parcelas.filter(x=>x.id!==p.id)}))}; });
+
+    let running=balance; const pts=[{label:'Hoje',v:balance}], detail=[];
+    for(let i=0;i<12;i++){ const ym=curYM+1+i, inst=instIn(ym), net=fixedIn-fixedOut-inst-avgVar; running+=net; const label=M[ym%12]+'/'+String(Math.floor(ym/12)).slice(2); pts.push({label,v:running}); detail.push({label:M[ym%12]+'/'+String(Math.floor(ym/12)).slice(2),income:fixedIn,fixed:fixedOut,inst,variable:avgVar,net,balance:running}); }
+    const vals=pts.map(p=>p.v), mn=Math.min(...vals,0), mx=Math.max(...vals,0), range=(mx-mn)||1;
+    const projBarsView=pts.map(b=>({label:b.label,h:(10+Math.round((b.v-mn)/range*84))+'px',barColor:b.v<0?'#e07a5f':'#7fd6a6',softColor:b.v<0?'#f0cfc4':'#cfe9da',balanceFmt:fmt0(b.v)}));
+    const projDetail=detail.map(d=>({label:d.label,incomeFmt:'+ '+fmt0(d.income),fixedFmt:'− '+fmt0(d.fixed),instFmt:'− '+fmt0(d.inst),varFmt:'− '+fmt0(d.variable),balanceFmt:fmt(d.balance),balColor:d.balance<0?'#c0492f':'#191c17'}));
+    const proj12=running;
+
+    const catMap={}; tx.filter(t=>t.type==='out').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.amount;});
+    const maxCat=Math.max(1,...Object.values(catMap));
+    const catList=this.CATS.map(c=>({name:c.name,color:c.color,totalFmt:fmt(catMap[c.name]||0),amountColor:catMap[c.name]?'#191c17':'#c9ccc0',pctStr:Math.round((catMap[c.name]||0)/maxCat*100)+'%'})).sort((a,b)=>(catMap[b.name]||0)-(catMap[a.name]||0));
+
+    const goalsView=G.map(g=>{ const pct=g.target?Math.min(100,Math.round(g.saved/g.target*100)):0; return {id:g.id,name:g.name,targetFmt:fmt(g.target),savedFmt:fmt(g.saved),remainFmt:fmt(Math.max(0,g.target-g.saved)),pctStr:pct+'%',add50:()=>this.addToGoal(g.id,50),add100:()=>this.addToGoal(g.id,100),add200:()=>this.addToGoal(g.id,200),del:()=>this.save(s=>({goals:s.goals.filter(x=>x.id!==g.id)}))}; });
+
+    const chip=(sel,color)=> sel
+      ? 'display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:22px;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid '+color+';background:'+color+'18;color:'+color
+      : 'display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:22px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid rgba(0,0,0,.1);background:#fff;color:#74766d';
+    const mkCats=(list,form)=>list.map(c=>({name:c.name,color:c.color,chipStyle:chip(S.forms[form].category===c.name,c.color),pick:()=>this.upd(form,'category',c.name)}));
+
+    const t=S.addType, af=S.forms[t], pf=S.forms.parcela, gf=S.forms.goal;
+    const isIn=t==='in';
+    const pParcelsN=parseInt(pf.parcels)||0, pTotalN=this.parse(pf.total);
+
+    const navc=(a)=>a?'#14342b':'#a8a99e';
+    const sameScreen=(x)=>S.screen===x;
+
+    return {
+      greeting,
+      isDash:sameScreen('dash'),isAdd:sameScreen('add'),isParc:sameScreen('parcelas'),isParcAdd:sameScreen('parcelaAdd'),
+      isProj:sameScreen('proj'),isHist:sameScreen('hist'),isCat:sameScreen('categorias'),isMetas:sameScreen('metas'),isMetaAdd:sameScreen('metaAdd'),isMais:sameScreen('mais'),
+      goDash:this.go('dash'),goParc:this.go('parcelas'),goParcAdd:this.go('parcelaAdd'),goProj:this.go('proj'),goHist:this.go('hist'),goCat:this.go('categorias'),goMetas:this.go('metas'),goMetaAdd:this.go('metaAdd'),goMais:this.go('mais'),
+      addOut:this.openAdd('out'),addIn:this.openAdd('in'),typeOut:this.setType('out'),typeIn:this.setType('in'),
+
+      balanceFmt:fmt(balance),balanceOnCard:balance<0?'#f0a58f':'#f4f3ee',
+      monthInFmt:'+ '+fmt(monthIn),monthOutFmt:'− '+fmt(monthOut),
+      hasTx:tx.length>0,noTx:tx.length===0,
+      recentTx,historyGroups,
+      hasParcelas:P.length>0,noParcelas:P.length===0,parcCount:P.length,parcelasView,instThisMonthFmt:fmt(instThisMonth),
+      hasGoals:G.length>0,noGoals:G.length===0,goalsView,
+      catList,avgVarFmt:fmt(avgVar).replace('R$ ',''),
+      projBarsView,projDetail,proj12Fmt:fmt(proj12),proj12Color:proj12<0?'#c0492f':'#14342b',proj12OnCard:proj12<0?'#f0a58f':'#f4f3ee',
+      noProjData:(fixedIn===0&&fixedOut===0&&avgVar===0&&P.length===0),
+
+      addCats:mkCats(isIn?this.INCOME_CATS:this.CATS,t),
+      amountVal:af.amount,noteVal:af.note,dateVal:af.date,
+      onAmount:this.on(t,'amount'),onNote:this.on(t,'note'),onDate:this.on(t,'date'),
+      amountColor:isIn?'#1f8a5b':'#c0492f',saveWord:isIn?'entrada':'saída',saveTx:this.saveTx,
+      toggleFixed:()=>this.upd(t,'fixed',!af.fixed),fixedTrack:af.fixed?'#1f8a5b':'#d5d3c9',fixedKnob:af.fixed?'22px':'3px',
+      outTabBg:!isIn?'#fff':'transparent',outTabColor:!isIn?'#c0492f':'#8a8c80',outTabShadow:!isIn?'0 1px 3px rgba(0,0,0,.1)':'none',
+      inTabBg:isIn?'#fff':'transparent',inTabColor:isIn?'#1f8a5b':'#8a8c80',inTabShadow:isIn?'0 1px 3px rgba(0,0,0,.1)':'none',
+
+      parcelaCats:mkCats(this.CATS,'parcela'),
+      pDescVal:pf.description,pTotalVal:pf.total,pParcelsVal:pf.parcels,pDueVal:pf.dueDay,pFirstVal:pf.firstDue,pCardVal:pf.card,
+      onPDesc:this.on('parcela','description'),onPTotal:this.on('parcela','total'),onPParcels:this.on('parcela','parcels'),onPDue:this.on('parcela','dueDay'),onPFirst:this.on('parcela','firstDue'),onPCard:this.on('parcela','card'),
+      pPerFmt:pParcelsN>0?fmt(pTotalN/pParcelsN):'—',saveParcela:this.saveParcela,
+
+      gNameVal:gf.name,gTargetVal:gf.target,gSavedVal:gf.saved,
+      onGName:this.on('goal','name'),onGTarget:this.on('goal','target'),onGSaved:this.on('goal','saved'),saveGoal:this.saveGoal,
+
+      clearAll:this.clearAll,
+      toast:S.toast,toastShow:!!S.toast,
+      navHome:navc(sameScreen('dash')),navProj:navc(sameScreen('proj')),navParc:navc(sameScreen('parcelas')||sameScreen('parcelaAdd')),navMais:navc(sameScreen('mais')||sameScreen('hist')||sameScreen('categorias')||sameScreen('metas')||sameScreen('metaAdd'))
+    };
+  }
+}
+</script>
+</body>
+</html>

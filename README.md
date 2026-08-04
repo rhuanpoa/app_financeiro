@@ -1,0 +1,74 @@
+# Minhas Finanças
+
+App de controle de finanças pessoais para usar no celular. Roda direto no navegador,
+sem servidor e sem cadastro — os dados ficam salvos no próprio aparelho.
+
+## O que tem
+
+- **Saldo** com entradas e saídas do mês
+- **Lançamentos** de saída/entrada com categoria, data e a opção "repete todo mês"
+- **Compras parceladas** com acompanhamento de quantas parcelas já foram pagas
+- **Previsão de 12 meses** (entradas fixas − gastos fixos − parcelas − média de gastos variáveis)
+- **Histórico** agrupado por mês
+- **Gasto por categoria**
+- **Metas de economia**
+- **Backup**: exportar/restaurar um arquivo `.json`
+
+## Estrutura
+
+```
+index.html               estrutura da página e barra de navegação
+css/style.css            todo o visual
+js/store.js              categorias, localStorage, formatação (R$, datas)
+js/calc.js               cálculos: saldo, previsão, parcelas, categorias, metas
+js/screens.js            HTML de cada tela
+js/app.js                estado, navegação e eventos
+manifest.webmanifest     dados para instalar na tela inicial
+sw.js                    service worker (faz o app abrir sem internet)
+icons/                   ícones do app
+Financas.dc.html         design original exportado do Claude Design (referência)
+```
+
+## Rodar no computador
+
+Precisa de um servidor local — abrir o arquivo direto (`file://`) desliga o
+service worker e o localStorage em alguns navegadores.
+
+```bash
+python -m http.server 8000
+# depois abra http://localhost:8000
+```
+
+## Publicar no GitHub Pages
+
+1. Suba o repositório para o GitHub.
+2. Vá em **Settings → Pages**.
+3. Em *Source*, escolha **Deploy from a branch**.
+4. Branch: **main**, pasta: **/ (root)**. Salve.
+5. Em 1–2 minutos o app fica em `https://SEU-USUARIO.github.io/NOME-DO-REPO/`.
+
+## Instalar no celular
+
+Abra o link do Pages no celular e:
+
+- **Android (Chrome):** menu ⋮ → *Instalar app* / *Adicionar à tela inicial*
+- **iPhone (Safari):** botão compartilhar → *Adicionar à Tela de Início*
+
+Depois disso ele abre em tela cheia, sem a barra do navegador, e funciona offline.
+
+## Depois de atualizar o app
+
+O service worker guarda os arquivos em cache. Ao publicar uma mudança, aumente a
+versão em `sw.js`:
+
+```js
+var VERSAO = 'financas-v2';   // era v1
+```
+
+Sem isso o celular pode continuar abrindo a versão antiga.
+
+## Sobre os dados
+
+Ficam só no `localStorage` deste navegador, neste aparelho. **Não há backup
+automático.** Limpar os dados do navegador apaga tudo — use *Mais → Exportar
+backup* de vez em quando.
