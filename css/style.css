@@ -519,6 +519,43 @@ svg { display: block; }
 
 .chip.on { font-weight: 700; }
 
+/* Selo das categorias criadas pelo usuário */
+.tag-sua {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--track);
+  border-radius: 6px;
+  padding: 2px 6px;
+  flex: none;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+/* Escolha de cor da nova categoria */
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex: none;
+  position: relative;
+  box-shadow: 0 0 0 0 transparent;
+  transition: box-shadow .15s, transform .15s;
+}
+
+/* Anel em volta da cor escolhida */
+.swatch.on {
+  box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ink);
+  transform: scale(1.04);
+}
+
 /* Interruptor "repete todo mês" */
 .switch-row {
   display: flex;

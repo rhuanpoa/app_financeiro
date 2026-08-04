@@ -10,7 +10,8 @@ sem servidor e sem cadastro — os dados ficam salvos no próprio aparelho.
 - **Compras parceladas** com acompanhamento de quantas parcelas já foram pagas
 - **Previsão de 12 meses** (entradas fixas − gastos fixos − parcelas − média de gastos variáveis)
 - **Histórico** agrupado por mês
-- **Gasto por categoria**
+- **Categorias**: totais por categoria (saídas e entradas) e criação de
+  categorias próprias, com cor à escolha
 - **Metas de economia**
 - **Backup**: exportar/restaurar um arquivo `.json`
 

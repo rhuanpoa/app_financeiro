@@ -37,10 +37,45 @@ window.Fin = window.Fin || {};
   Fin.MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
                'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
+  // Cores oferecidas na hora de criar uma categoria.
+  Fin.PALETA = ['#d9822b', '#2f9e6f', '#c0492f', '#6b57c9',
+                '#c94f97', '#3b76c9', '#b08427', '#7a9a2e',
+                '#2b9a9e', '#8b5cc9', '#4a7dc9', '#8a8c80'];
+
+  /* ---------- categorias criadas pelo usuário ----------
+     Guardadas aqui dentro para que Fin.cor() e Fin.catsDe()
+     enxerguem as personalizadas sem receber `dados` em toda
+     chamada. O app.js avisa a cada mudança.                */
+
+  var minhasCats = [];
+
+  Fin.usarCategorias = function (cats) {
+    minhasCats = Array.isArray(cats) ? cats : [];
+  };
+
+  // Lista completa de um tipo: as de fábrica + as suas.
+  Fin.catsDe = function (tipo) {
+    var base = tipo === 'in' ? Fin.INCOME_CATS : Fin.CATS;
+    var extras = minhasCats.filter(function (c) { return c.type === tipo; });
+    return base.map(function (c) {
+      return { name: c.name, color: c.color, custom: false };
+    }).concat(extras.map(function (c) {
+      return { name: c.name, color: c.color, custom: true, id: c.id };
+    }));
+  };
+
+  // O nome já existe naquele tipo? (evita duas categorias iguais)
+  Fin.nomeEmUso = function (nome, tipo) {
+    var alvo = String(nome).trim().toLowerCase();
+    return Fin.catsDe(tipo).some(function (c) {
+      return c.name.toLowerCase() === alvo;
+    });
+  };
+
   /* ---------- persistência ---------- */
 
   Fin.carregar = function () {
-    var vazio = { tx: [], parcelas: [], goals: [] };
+    var vazio = { tx: [], parcelas: [], goals: [], cats: [] };
     try {
       var bruto = localStorage.getItem(CHAVE);
       if (!bruto) return vazio;
@@ -48,7 +83,10 @@ window.Fin = window.Fin || {};
       return {
         tx:       Array.isArray(d.tx) ? d.tx : [],
         parcelas: Array.isArray(d.parcelas) ? d.parcelas : [],
-        goals:    Array.isArray(d.goals) ? d.goals : []
+        goals:    Array.isArray(d.goals) ? d.goals : [],
+        // `cats` não existia nas primeiras versões: quem já usava o app
+        // continua funcionando, só sem categorias próprias.
+        cats:     Array.isArray(d.cats) ? d.cats : []
       };
     } catch (e) {
       return vazio;
@@ -58,7 +96,8 @@ window.Fin = window.Fin || {};
   Fin.salvar = function (dados) {
     try {
       localStorage.setItem(CHAVE, JSON.stringify({
-        tx: dados.tx, parcelas: dados.parcelas, goals: dados.goals
+        tx: dados.tx, parcelas: dados.parcelas,
+        goals: dados.goals, cats: dados.cats
       }));
       return true;
     } catch (e) {
@@ -76,7 +115,8 @@ window.Fin = window.Fin || {};
       in:      { amount: '', category: '', note: '', date: hoje, fixed: false },
       parcela: { description: '', total: '', parcels: '', dueDay: '',
                  firstDue: hoje.slice(0, 7), card: '', category: '' },
-      goal:    { name: '', target: '', saved: '' }
+      goal:    { name: '', target: '', saved: '' },
+      categoria: { name: '', color: Fin.PALETA[0], type: 'out' }
     };
   };
 
@@ -127,7 +167,7 @@ window.Fin = window.Fin || {};
   };
 
   Fin.cor = function (nomeCategoria) {
-    var achou = Fin.CATS.concat(Fin.INCOME_CATS).find(function (c) {
+    var achou = Fin.CATS.concat(Fin.INCOME_CATS, minhasCats).find(function (c) {
       return c.name === nomeCategoria;
     });
     return achou ? achou.color : '#8a8c80';

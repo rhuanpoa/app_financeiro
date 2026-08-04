@@ -172,21 +172,25 @@ window.Fin = window.Fin || {};
 
   /* ---------- categorias ---------- */
 
-  function verCategorias(tx) {
+  // Totais por categoria de um tipo ('out' = gastos, 'in' = recebido).
+  // A barra de cada linha é proporcional à maior categoria do grupo.
+  function verCategorias(tx, tipo) {
     var soma = {};
-    tx.filter(function (t) { return t.type === 'out'; }).forEach(function (t) {
+    tx.filter(function (t) { return t.type === tipo; }).forEach(function (t) {
       soma[t.category] = (soma[t.category] || 0) + t.amount;
     });
     var maior = Math.max.apply(null, [1].concat(Object.keys(soma).map(function (k) {
       return soma[k];
     })));
-    return Fin.CATS.map(function (c) {
+    return Fin.catsDe(tipo).map(function (c) {
       var v = soma[c.name] || 0;
       return {
         name: c.name,
         color: c.color,
+        custom: !!c.custom,
+        id: c.id,
+        emUso: v > 0,
         totalFmt: Fin.fmt(v),
-        usada: v > 0,
         pct: Math.round(v / maior * 100),
         _v: v
       };
@@ -241,7 +245,8 @@ window.Fin = window.Fin || {};
       temMetas: dados.goals.length > 0,
       metas: verMetas(dados.goals),
 
-      categorias: verCategorias(dados.tx),
+      catsSaida: verCategorias(dados.tx, 'out'),
+      catsEntrada: verCategorias(dados.tx, 'in'),
       previsao: proj
     };
   };

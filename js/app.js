@@ -15,6 +15,7 @@
      --------------------------------------------------------- */
 
   var dados = Fin.carregar();
+  Fin.usarCategorias(dados.cats);
 
   var estado = {
     screen: 'dash',
@@ -27,7 +28,8 @@
     dash: 'dash',
     proj: 'proj',
     parcelas: 'parcelas', parcelaAdd: 'parcelas',
-    mais: 'mais', hist: 'mais', categorias: 'mais', metas: 'mais', metaAdd: 'mais'
+    mais: 'mais', hist: 'mais', categorias: 'mais', categoriaAdd: 'mais',
+    metas: 'mais', metaAdd: 'mais'
   };
 
   /* ---------------------------------------------------------
@@ -49,6 +51,9 @@
   }
 
   function persistir() {
+    // As categorias próprias precisam estar visíveis para Fin.cor()
+    // antes de qualquer novo render.
+    Fin.usarCategorias(dados.cats);
     if (!Fin.salvar(dados)) {
       toast('Não consegui salvar neste navegador');
     }
@@ -140,6 +145,44 @@
     toast('Meta criada ✓');
   }
 
+  function salvarCategoria() {
+    var f = estado.forms.categoria;
+    var nome = (f.name || '').trim();
+
+    if (!nome) { toast('Dê um nome à categoria'); return; }
+    if (Fin.nomeEmUso(nome, f.type)) { toast('Já existe uma categoria com esse nome'); return; }
+
+    dados.cats.push({
+      id: Date.now(),
+      name: nome,
+      color: f.color || Fin.PALETA[0],
+      type: f.type === 'in' ? 'in' : 'out'
+    });
+
+    estado.forms.categoria = Fin.formsEmBranco().categoria;
+    persistir();
+    irPara('categorias');
+    toast('Categoria criada ✓');
+  }
+
+  function apagarCategoria(id) {
+    var cat = dados.cats.find(function (c) { return c.id === id; });
+    if (!cat) return;
+
+    // Apagar uma categoria em uso deixaria lançamentos órfãos, sem cor
+    // e sem aparecer em lugar nenhum. Melhor barrar e explicar.
+    var emUso = dados.tx.some(function (t) { return t.category === cat.name; }) ||
+                dados.parcelas.some(function (p) { return p.category === cat.name; });
+    if (emUso) { toast('Categoria em uso — não dá para apagar'); return; }
+
+    if (!confirm('Apagar a categoria "' + cat.name + '"?')) return;
+
+    dados.cats = dados.cats.filter(function (c) { return c.id !== id; });
+    persistir();
+    render();
+    toast('Categoria apagada');
+  }
+
   function guardarNaMeta(id, valor) {
     dados.goals = dados.goals.map(function (g) {
       return g.id === id ? Object.assign({}, g, { saved: Math.min(g.target, g.saved + valor) }) : g;
@@ -189,7 +232,8 @@
           dados = {
             tx: d.tx,
             parcelas: Array.isArray(d.parcelas) ? d.parcelas : [],
-            goals: Array.isArray(d.goals) ? d.goals : []
+            goals: Array.isArray(d.goals) ? d.goals : [],
+            cats: Array.isArray(d.cats) ? d.cats : []
           };
           persistir();
           irPara('dash');
@@ -255,9 +299,29 @@
         break;
       }
 
-      case 'save-tx':      salvarLancamento(); break;
-      case 'save-parcela': salvarParcela(); break;
-      case 'save-goal':    salvarMeta(); break;
+      // Troca o tipo da categoria nova: redesenha porque o texto de
+      // exemplo e a dica do rodapé mudam junto.
+      case 'set-cat-type':
+        estado.forms.categoria.type = alvo.dataset.type;
+        render();
+        break;
+
+      case 'pick-color': {
+        estado.forms.categoria.color = alvo.dataset.color;
+        var paleta = view.querySelector('[data-swatches]');
+        if (paleta) {
+          paleta.querySelectorAll('.swatch').forEach(function (s) {
+            s.classList.toggle('on', s === alvo);
+          });
+        }
+        break;
+      }
+
+      case 'save-tx':        salvarLancamento(); break;
+      case 'save-parcela':   salvarParcela(); break;
+      case 'save-goal':      salvarMeta(); break;
+      case 'save-categoria': salvarCategoria(); break;
+      case 'del-categoria':  apagarCategoria(id); break;
 
       case 'del-tx':      apagar('tx', id, 'Removido'); break;
       case 'del-parcela': apagar('parcelas', id, 'Compra removida'); break;
@@ -272,7 +336,7 @@
 
       case 'clear-all':
         if (confirm('Apagar TODOS os dados? Isso não pode ser desfeito.')) {
-          dados = { tx: [], parcelas: [], goals: [] };
+          dados = { tx: [], parcelas: [], goals: [], cats: [] };
           persistir();
           render();
           toast('Dados apagados');

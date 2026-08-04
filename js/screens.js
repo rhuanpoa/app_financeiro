@@ -198,7 +198,7 @@ window.Fin = window.Fin || {};
          '</div>';
 
     h += '<div class="label">Categoria</div>' +
-         chips(entrada ? Fin.INCOME_CATS : Fin.CATS, tipo, f.category);
+         chips(Fin.catsDe(tipo), tipo, f.category);
 
     h += '<div class="label">Descrição (opcional)</div>' +
          campo({ form: tipo, field: 'note', value: f.note, placeholder: 'Ex: Almoço com a equipe' });
@@ -310,7 +310,7 @@ window.Fin = window.Fin || {};
     h += '<div class="label">Cartão</div>' +
          campo({ form: 'parcela', field: 'card', value: f.card, placeholder: 'Ex: Nubank' });
 
-    h += '<div class="label">Categoria</div>' + chips(Fin.CATS, 'parcela', f.category);
+    h += '<div class="label">Categoria</div>' + chips(Fin.catsDe('out'), 'parcela', f.category);
 
     h += '<button class="btn-primary" data-action="save-parcela" type="button">Cadastrar compra</button>';
 
@@ -404,26 +404,77 @@ window.Fin = window.Fin || {};
      ========================================================= */
 
   Fin.telas.categorias = function (v) {
+    // Uma linha da lista. As criadas por você ganham o ✕ para apagar.
+    function linha(c) {
+      return '<div class="card" style="border-radius:16px;padding:13px 16px">' +
+               '<div class="between" style="align-items:center">' +
+                 '<div style="display:flex;align-items:center;gap:10px;min-width:0">' +
+                   '<i style="width:12px;height:12px;border-radius:50%;background:' + c.color + ';display:block;flex:none"></i>' +
+                   '<span style="font-size:14px;font-weight:700">' + esc(c.name) + '</span>' +
+                   (c.custom ? '<span class="tag-sua">sua</span>' : '') +
+                 '</div>' +
+                 '<div style="display:flex;align-items:center">' +
+                   '<span class="mono" style="font-size:14px;font-weight:600;color:' +
+                     (c.emUso ? 'var(--ink)' : '#c9ccc0') + '">' + c.totalFmt + '</span>' +
+                   (c.custom
+                     ? '<button class="del" data-action="del-categoria" data-id="' + c.id + '" type="button" aria-label="Apagar categoria">✕</button>'
+                     : '') +
+                 '</div>' +
+               '</div>' +
+               barra(c.pct, c.color, 'thin') +
+             '</div>';
+    }
+
     var h = '<div class="screen">';
 
     h += '<div class="head"><div>' +
            '<div class="head-title">Categorias</div>' +
-           '<div class="head-sub">Quanto você gastou em cada uma</div>' +
+           '<div class="head-sub">Quanto entrou e saiu em cada uma</div>' +
          '</div></div>';
 
-    h += '<div class="stack">' + v.categorias.map(function (c) {
-      return '<div class="card" style="border-radius:16px;padding:13px 16px">' +
-               '<div class="between" style="align-items:center">' +
-                 '<div style="display:flex;align-items:center;gap:10px">' +
-                   '<i style="width:12px;height:12px;border-radius:50%;background:' + c.color + ';display:block"></i>' +
-                   '<span style="font-size:14px;font-weight:700">' + esc(c.name) + '</span>' +
-                 '</div>' +
-                 '<span class="mono" style="font-size:14px;font-weight:600;color:' +
-                   (c.usada ? 'var(--ink)' : '#c9ccc0') + '">' + c.totalFmt + '</span>' +
-               '</div>' +
-               barra(c.pct, c.color, 'thin') +
-             '</div>';
-    }).join('') + '</div>';
+    h += '<button class="btn-ghost" data-nav="categoriaAdd" type="button">+ Nova categoria</button>';
+
+    h += '<div class="section-title" style="margin-top:6px">Saídas</div>' +
+         '<div class="stack">' + v.catsSaida.map(linha).join('') + '</div>';
+
+    h += '<div class="section-title">Entradas</div>' +
+         '<div class="stack">' + v.catsEntrada.map(linha).join('') + '</div>';
+
+    return h + '</div>';
+  };
+
+  /* =========================================================
+     Nova categoria
+     ========================================================= */
+
+  Fin.telas.categoriaAdd = function (v, estado) {
+    var f = estado.forms.categoria;
+    var h = '<div class="screen">';
+
+    h += '<div class="head"><div class="head-title sm">Nova categoria</div>' + fechar('categorias') + '</div>';
+
+    h += '<div class="segmented">' +
+           '<button type="button" data-action="set-cat-type" data-type="out" class="' + (f.type === 'out' ? 'on' : '') + '">Saída</button>' +
+           '<button type="button" data-action="set-cat-type" data-type="in" class="' + (f.type === 'in' ? 'on' : '') + '">Entrada</button>' +
+         '</div>';
+
+    h += '<div class="label">Nome</div>' +
+         campo({ form: 'categoria', field: 'name',  value: f.name,
+                 placeholder: f.type === 'in' ? 'Ex: Aluguel recebido' : 'Ex: Pet, Academia' });
+
+    h += '<div class="label">Cor</div>' +
+         '<div class="swatches" data-swatches>' +
+           Fin.PALETA.map(function (cor) {
+             return '<button type="button" class="swatch' + (cor === f.color ? ' on' : '') + '" ' +
+                    'style="background:' + cor + '" data-action="pick-color" data-color="' + cor + '" ' +
+                    'aria-label="Cor ' + cor + '"></button>';
+           }).join('') +
+         '</div>';
+
+    h += '<button class="btn-primary" data-action="save-categoria" type="button">Criar categoria</button>';
+
+    h += '<div class="hint" style="margin-top:14px;line-height:1.5">Ela vai aparecer na hora de registrar ' +
+         (f.type === 'in' ? 'uma entrada' : 'uma saída ou uma compra parcelada') + '.</div>';
 
     return h + '</div>';
   };
