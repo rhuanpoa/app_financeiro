@@ -446,12 +446,48 @@ svg { display: block; }
   border-radius: 13px;
   padding: 14px;
   font-size: 16px;   /* 16px evita o zoom automático do iOS ao focar */
+  line-height: 1.2;  /* fixa a altura, para data e texto ficarem iguais */
   color: var(--ink);
   outline: none;
   margin-bottom: 16px;
 }
 
 .field:focus { border-color: var(--deep); }
+
+/* Campos de data e de mês.
+   O iOS (e alguns Androids) desenham esses campos com uma largura nativa
+   própria e ignoram o `width: 100%` acima, então o campo passa da borda
+   direita do cartão. Desligar a aparência nativa devolve o controle ao CSS. */
+input[type="date"].field,
+input[type="month"].field {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+  /* O miolo nativo do campo de data é 2px mais alto que uma linha de texto.
+     Esta altura repete a conta da .field (linha + padding + borda), então
+     data, mês e texto ficam com a mesma altura sem número mágico. */
+  height: calc(1.2em + 30px);
+}
+
+/* Sem a aparência nativa o iOS centraliza a data dentro do campo. */
+input[type="date"].field::-webkit-date-and-time-value,
+input[type="month"].field::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+/* O ícone do calendário é mais alto que uma linha de texto e deixava o
+   campo de data 2px maior que os demais. Aqui ele passa a ocupar
+   exatamente uma linha, alinhando todos os campos. */
+input[type="date"].field::-webkit-calendar-picker-indicator,
+input[type="month"].field::-webkit-calendar-picker-indicator {
+  width: 1.2em;
+  height: 1.2em;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
 
 .pair { display: flex; gap: 12px; }
 .pair > div { flex: 1; min-width: 0; }
