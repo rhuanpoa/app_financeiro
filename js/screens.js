@@ -20,16 +20,6 @@ window.Fin = window.Fin || {};
     return ICONE_FECHAR.replace('{{destino}}', destino);
   }
 
-  // Botão que abre o menu lateral. Vai no topo de toda página principal
-  // (as telas de formulário usam o ✕ no lugar).
-  function menu() {
-    return '<div class="topbar">' +
-             '<button class="icon-btn" data-action="abrir-menu" type="button" aria-label="Abrir menu">' +
-               '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' +
-             '</button>' +
-           '</div>';
-  }
-
   function vazio(titulo, texto) {
     return '<div class="card dashed">' +
              '<div class="empty-title">' + titulo + '</div>' +
@@ -92,13 +82,15 @@ window.Fin = window.Fin || {};
   Fin.telas.dash = function (v) {
     var h = '<div class="screen">';
 
-    h += menu();
-
+    // O botão redondo do canto é o do design original; hoje ele abre o menu.
     h += '<div class="head">' +
            '<div>' +
              '<div class="head-eyebrow">' + v.saudacao + '</div>' +
              '<div class="head-title">Suas finanças</div>' +
            '</div>' +
+           '<button class="icon-btn" data-action="abrir-menu" type="button" aria-label="Abrir menu">' +
+             '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>' +
+           '</button>' +
          '</div>';
 
     // Atalho para revisar o que veio do extrato e ainda não entrou no caixa.
@@ -244,8 +236,7 @@ window.Fin = window.Fin || {};
   Fin.telas.parcelas = function (v) {
     var h = '<div class="screen">';
 
-    h += menu() +
-         '<div class="head"><div>' +
+    h += '<div class="head"><div>' +
            '<div class="head-title">Compras parceladas</div>' +
            '<div class="head-sub">Acompanhe o que ainda falta pagar</div>' +
          '</div></div>';
@@ -343,8 +334,7 @@ window.Fin = window.Fin || {};
     var p = v.previsao;
     var h = '<div class="screen">';
 
-    h += menu() +
-         '<div class="head"><div>' +
+    h += '<div class="head"><div>' +
            '<div class="head-title">Previsão</div>' +
            '<div class="head-sub">Projeção do seu saldo nos próximos 12 meses</div>' +
          '</div></div>';
@@ -396,8 +386,7 @@ window.Fin = window.Fin || {};
   Fin.telas.hist = function (v) {
     var h = '<div class="screen">';
 
-    h += menu() +
-         '<div class="head"><div>' +
+    h += '<div class="head"><div>' +
            '<div class="head-title">Histórico</div>' +
            '<div class="head-sub">Tudo o que entrou e saiu</div>' +
          '</div></div>';
@@ -447,8 +436,7 @@ window.Fin = window.Fin || {};
 
     var h = '<div class="screen">';
 
-    h += menu() +
-         '<div class="head"><div>' +
+    h += '<div class="head"><div>' +
            '<div class="head-title">Categorias</div>' +
            '<div class="head-sub">Quanto entrou e saiu em cada uma</div>' +
          '</div></div>';
@@ -507,8 +495,7 @@ window.Fin = window.Fin || {};
   Fin.telas.metas = function (v) {
     var h = '<div class="screen">';
 
-    h += menu() +
-         '<div class="head"><div>' +
+    h += '<div class="head"><div>' +
            '<div class="head-title">Metas de economia</div>' +
            '<div class="head-sub">Guarde para seus objetivos</div>' +
          '</div></div>';
@@ -586,7 +573,6 @@ window.Fin = window.Fin || {};
     ];
 
     return '<div class="screen">' +
-             menu() +
              '<div class="head"><div>' +
                '<div class="head-title">Importar extrato</div>' +
                '<div class="head-sub">Traga as movimentações do seu banco</div>' +
@@ -617,7 +603,7 @@ window.Fin = window.Fin || {};
 
   Fin.telas.movimentacoes = function (v, estado) {
     var m = v.movimentos;
-    var h = '<div class="screen">' + menu();
+    var h = '<div class="screen">';
 
     h += '<div class="head"><div>' +
            '<div class="head-title">Movimentações</div>' +

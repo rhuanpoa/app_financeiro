@@ -10,7 +10,7 @@
   var toastEl = document.getElementById('toast');
   var drawer  = document.getElementById('drawer');
   var overlay = document.getElementById('overlay');
-  var fab     = document.getElementById('fab');
+  var tabbar  = document.querySelector('.tabbar');
 
   /* ---------------------------------------------------------
      Estado
@@ -26,11 +26,7 @@
     forms: Fin.formsEmBranco()
   };
 
-  // Telas de formulário: têm o ✕ próprio e escondem o botão flutuante,
-  // que ali só atrapalharia.
-  var FORMULARIOS = ['add', 'parcelaAdd', 'metaAdd', 'categoriaAdd', 'importar'];
-
-  // Qual item do menu acende em cada tela.
+  // Qual item do menu lateral acende em cada tela.
   var ITEM_DO_MENU = {
     dash: 'dash',
     movimentacoes: 'movimentacoes', importar: 'importar',
@@ -39,6 +35,14 @@
     categorias: 'categorias', categoriaAdd: 'categorias',
     metas: 'metas', metaAdd: 'metas',
     parcelas: 'parcelas', parcelaAdd: 'parcelas'
+  };
+
+  // Qual aba da barra de baixo acende. As telas que não têm aba própria
+  // (Parcelas, Histórico, Metas…) ficam sem nenhuma acesa — elas moram no menu.
+  var ABA_DA_TELA = {
+    dash: 'dash',
+    proj: 'proj',
+    movimentacoes: 'movimentacoes', importar: 'movimentacoes'
   };
 
   /* ---------------------------------------------------------
@@ -53,21 +57,27 @@
     view.scrollTop = 0;
     window.scrollTo(0, 0);
 
-    fab.hidden = FORMULARIOS.indexOf(estado.screen) !== -1;
+    var aba = ABA_DA_TELA[estado.screen];
+    tabbar.querySelectorAll('.tab').forEach(function (b) {
+      b.classList.toggle('on', !!b.dataset.nav && b.dataset.nav === aba);
+    });
 
     var ativo = ITEM_DO_MENU[estado.screen];
     drawer.querySelectorAll('.drawer-item').forEach(function (b) {
       b.classList.toggle('on', b.dataset.nav === ativo);
     });
 
-    // Cabeçalho do menu: saldo sempre à mão, e o contador de pendências.
+    // Cabeçalho do menu: saldo sempre à mão, e o contador de pendências
+    // repetido na barra de baixo.
     var saldoEl = document.getElementById('drawer-saldo');
     saldoEl.textContent = calculado.saldoFmt;
     saldoEl.classList.toggle('negative', calculado.saldoNegativo);
 
-    var badge = document.getElementById('drawer-badge');
-    badge.hidden = !calculado.temPendentes;
-    badge.textContent = calculado.qtdPendentes;
+    [document.getElementById('drawer-badge'),
+     document.getElementById('tab-badge')].forEach(function (b) {
+      b.hidden = !calculado.temPendentes;
+      b.textContent = calculado.qtdPendentes;
+    });
   }
 
   /* ---------------------------------------------------------

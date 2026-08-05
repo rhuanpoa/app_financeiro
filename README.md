@@ -18,10 +18,20 @@ sem servidor e sem cadastro — os dados ficam salvos no próprio aparelho.
 - **Metas de economia**
 - **Backup**: exportar/restaurar um arquivo `.json`
 
+## Navegação
+
+Barra fixa embaixo com os atalhos do dia a dia — **Início**, **Previsão**, o
+botão **+**, **Extrato** e **Menu**. O botão *Menu* (e o botão redondo no canto
+do Início) abre o menu lateral, que lista todas as páginas: Movimentações,
+Histórico, Categorias, Metas, Parcelas, importar extrato e backup.
+
+A aba *Extrato* mostra um contador vermelho quando há movimentações
+importadas esperando revisão.
+
 ## Estrutura
 
 ```
-index.html               estrutura da página e menu lateral
+index.html               estrutura, barra de navegação e menu lateral
 css/style.css            todo o visual
 js/store.js              categorias, localStorage, formatação (R$, datas)
 js/calc.js               cálculos: saldo, previsão, parcelas, categorias, metas

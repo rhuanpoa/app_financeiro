@@ -4,7 +4,7 @@
    Suba o número da versão sempre que mexer no HTML/CSS/JS.
    ========================================================= */
 
-var VERSAO = 'financas-v4';
+var VERSAO = 'financas-v5';
 
 var ARQUIVOS = [
   './',
