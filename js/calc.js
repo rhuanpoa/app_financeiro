@@ -304,6 +304,11 @@ window.Fin = window.Fin || {};
 
     var filtrados = conta ? doExtrato.filter(function (t) { return t.conta === conta; }) : doExtrato;
 
+    // Os gráficos olham TODOS os lançamentos, não só os que vieram de
+    // extrato: quem digitou um gasto na mão também quer vê-lo aqui.
+    // Com uma conta escolhida, o filtro vale para eles também.
+    var baseGraficos = conta ? tx.filter(function (t) { return t.conta === conta; }) : tx;
+
     var entradas = 0, saidas = 0;
     filtrados.forEach(function (t) {
       if (t.type === 'in') entradas += t.amount; else saidas += t.amount;
@@ -314,10 +319,11 @@ window.Fin = window.Fin || {};
     return {
       contas: contas,
       total: filtrados.length,
-      // Gráficos da tela de Movimentações, sobre o que está listado nela
-      // (respeitando o filtro de conta).
-      catsSaida: porCategoria(filtrados, 'out', 9),
-      catsEntrada: porCategoria(filtrados, 'in', 7),
+      // Gráficos da tela de Movimentações: todos os lançamentos.
+      catsSaida: porCategoria(baseGraficos, 'out', 9),
+      catsEntrada: porCategoria(baseGraficos, 'in', 7),
+      escopoGraficos: conta || 'Todos os lançamentos',
+      qtdGraficos: baseGraficos.length,
       temImportados: doExtrato.length > 0,
       entradasFmt: '+ ' + Fin.fmt(entradas),
       saidasFmt: '− ' + Fin.fmt(saidas),

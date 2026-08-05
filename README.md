@@ -10,8 +10,8 @@ sem servidor e sem cadastro — os dados ficam salvos no próprio aparelho.
 - **Importar extrato do banco** em OFX ou CSV, com categoria sugerida
   automaticamente e revisão antes de entrar no caixa
 - **Movimentações**: o que veio do extrato, com filtro por conta
-- **Gráficos por categoria** no Início (mês corrente) e em Movimentações,
-  ordenados do maior para o menor
+- **Gráficos por categoria** no Início (mês corrente) e em Movimentações
+  (todos os lançamentos), ordenados do maior para o menor
 - **Compras parceladas** com acompanhamento de quantas parcelas já foram pagas
 - **Previsão de 12 meses** (entradas fixas − gastos fixos − parcelas − média de gastos variáveis)
 - **Histórico** agrupado por mês

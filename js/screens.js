@@ -665,7 +665,7 @@ window.Fin = window.Fin || {};
 
     h += '<div class="head"><div>' +
            '<div class="head-title">Movimentações</div>' +
-           '<div class="head-sub">O que veio do extrato do banco</div>' +
+           '<div class="head-sub">Painel por categoria e o extrato do banco</div>' +
          '</div></div>';
 
     /* ---- fila de revisão ---- */
@@ -713,25 +713,7 @@ window.Fin = window.Fin || {};
       '</div>';
     }
 
-    /* ---- nada importado ainda ---- */
-    if (!m.temImportados) {
-      if (!v.temPendentes) {
-        h += '<div class="card dashed" style="margin-bottom:16px">' +
-               '<div class="empty-title">Nenhum extrato importado</div>' +
-               '<div class="empty-text">Traga o extrato do seu banco em OFX ou CSV e as movimentações aparecem aqui, prontas para categorizar.</div>' +
-             '</div>';
-      }
-      h += '<button class="btn-primary" data-nav="importar" type="button">Importar extrato</button>';
-      return h + '</div>';
-    }
-
-    /* ---- resumo do que já foi importado ---- */
-    h += '<div class="resumo-import">' +
-           '<div class="t">' + m.total + ' movimentação(ões) importada(s)</div>' +
-           '<div class="n mono">' + m.saldoFmt + '</div>' +
-           '<div class="s">' + m.entradasFmt + ' entrou · ' + m.saidasFmt + ' saiu</div>' +
-         '</div>';
-
+    /* ---- filtro de conta: vem antes de tudo que ele filtra ---- */
     if (m.contas.length > 1) {
       h += '<div class="contas">' +
              '<button class="conta-chip' + (estado.contaFiltro ? '' : ' on') + '" data-action="filtrar-conta" data-conta="" type="button">Todas</button>' +
@@ -742,12 +724,36 @@ window.Fin = window.Fin || {};
            '</div>';
     }
 
-    // Gráficos sobre o que está listado nesta tela (respeitam o filtro de conta)
-    h += '<div class="section-title" style="margin-top:20px">Por categoria</div>';
-    h += graficoCategorias('Onde mais saiu', m.catsSaida, { mostrarShare: true });
-    h += graficoCategorias('De onde mais veio', m.catsEntrada, { mostrarShare: true });
+    /* ---- gráficos: todos os lançamentos, não só os do extrato ---- */
+    if (m.catsSaida.temDados || m.catsEntrada.temDados) {
+      h += '<div class="section-bar" style="margin-top:4px">' +
+             '<div style="font-size:15px;font-weight:800">Por categoria</div>' +
+             '<div style="font-size:11px;color:var(--muted);font-weight:600">' +
+               esc(m.escopoGraficos) + ' · ' + m.qtdGraficos +
+             '</div>' +
+           '</div>';
+      h += graficoCategorias('Onde mais saiu', m.catsSaida, { mostrarShare: true });
+      h += graficoCategorias('De onde mais veio', m.catsEntrada, { mostrarShare: true });
+    }
 
-    h += '<div class="section-title" style="margin-top:22px">Lançamentos</div>';
+    /* ---- nada importado ainda ---- */
+    if (!m.temImportados) {
+      if (!v.temPendentes) {
+        h += '<div class="card dashed" style="margin:22px 0 16px">' +
+               '<div class="empty-title">Nenhum extrato importado</div>' +
+               '<div class="empty-text">Traga o extrato do seu banco em OFX, CSV ou PDF e as movimentações aparecem aqui, prontas para categorizar.</div>' +
+             '</div>';
+      }
+      h += '<button class="btn-primary" data-nav="importar" type="button">Importar extrato</button>';
+      return h + '</div>';
+    }
+
+    /* ---- o que veio do extrato ---- */
+    h += '<div class="resumo-import" style="margin-top:22px">' +
+           '<div class="t">' + m.total + ' movimentação(ões) importada(s)</div>' +
+           '<div class="n mono">' + m.saldoFmt + '</div>' +
+           '<div class="s">' + m.entradasFmt + ' entrou · ' + m.saidasFmt + ' saiu</div>' +
+         '</div>';
 
     h += m.grupos.map(function (g) {
       return '<div class="group-head">' +
