@@ -212,9 +212,59 @@ window.Fin = window.Fin || {};
     });
   }
 
+  /* ---------- movimentações vindas de extrato ---------- */
+
+  function verPendentes(pendentes) {
+    return pendentes.slice()
+      .sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; })
+      .map(function (p) {
+        var d = Fin.paraData(p.date);
+        var entrada = p.type === 'in';
+        return {
+          id: p.id,
+          memo: p.memo,
+          category: p.category,
+          type: p.type,
+          meta: d.getDate() + ' ' + Fin.MESES[d.getMonth()] + ' · ' + p.conta,
+          amountFmt: (entrada ? '+ ' : '− ') + Fin.fmt(p.amount),
+          amountClass: entrada ? 'in' : 'out'
+        };
+      });
+  }
+
+  // Lançamentos que vieram de extrato, já confirmados.
+  function verImportados(tx, conta) {
+    var doExtrato = tx.filter(function (t) { return t.origem === 'extrato'; });
+
+    var contas = [];
+    doExtrato.forEach(function (t) {
+      if (t.conta && contas.indexOf(t.conta) === -1) contas.push(t.conta);
+    });
+
+    var filtrados = conta ? doExtrato.filter(function (t) { return t.conta === conta; }) : doExtrato;
+
+    var entradas = 0, saidas = 0;
+    filtrados.forEach(function (t) {
+      if (t.type === 'in') entradas += t.amount; else saidas += t.amount;
+    });
+
+    var ordenado = filtrados.slice().sort(function (a, b) { return b.id - a.id; });
+
+    return {
+      contas: contas,
+      total: filtrados.length,
+      temImportados: doExtrato.length > 0,
+      entradasFmt: '+ ' + Fin.fmt(entradas),
+      saidasFmt: '− ' + Fin.fmt(saidas),
+      saldoFmt: Fin.fmt(entradas - saidas),
+      saldoNegativo: entradas - saidas < 0,
+      grupos: agruparPorMes(ordenado)
+    };
+  }
+
   /* ---------- entrada única ---------- */
 
-  Fin.calcular = function (dados) {
+  Fin.calcular = function (dados, contaFiltro) {
     var agora = new Date();
     var mesAtual = Fin.indiceMes(agora);
     var hora = agora.getHours();
@@ -247,6 +297,13 @@ window.Fin = window.Fin || {};
 
       catsSaida: verCategorias(dados.tx, 'out'),
       catsEntrada: verCategorias(dados.tx, 'in'),
+
+      pendentes: verPendentes(dados.pendentes),
+      qtdPendentes: dados.pendentes.length,
+      temPendentes: dados.pendentes.length > 0,
+      // Só dá para confirmar quando todas tiverem categoria escolhida.
+      faltaCategoria: dados.pendentes.filter(function (p) { return !p.category; }).length,
+      movimentos: verImportados(dados.tx, contaFiltro),
       previsao: proj
     };
   };

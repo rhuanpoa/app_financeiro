@@ -6,9 +6,11 @@
 (function (Fin) {
   'use strict';
 
-  var view  = document.getElementById('view');
+  var view    = document.getElementById('view');
   var toastEl = document.getElementById('toast');
-  var tabbar = document.querySelector('.tabbar');
+  var drawer  = document.getElementById('drawer');
+  var overlay = document.getElementById('overlay');
+  var fab     = document.getElementById('fab');
 
   /* ---------------------------------------------------------
      Estado
@@ -20,16 +22,23 @@
   var estado = {
     screen: 'dash',
     addType: 'out',
+    contaFiltro: '',
     forms: Fin.formsEmBranco()
   };
 
-  // Qual aba da barra de baixo acende em cada tela.
-  var ABA_DA_TELA = {
+  // Telas de formulário: têm o ✕ próprio e escondem o botão flutuante,
+  // que ali só atrapalharia.
+  var FORMULARIOS = ['add', 'parcelaAdd', 'metaAdd', 'categoriaAdd', 'importar'];
+
+  // Qual item do menu acende em cada tela.
+  var ITEM_DO_MENU = {
     dash: 'dash',
+    movimentacoes: 'movimentacoes', importar: 'importar',
     proj: 'proj',
-    parcelas: 'parcelas', parcelaAdd: 'parcelas',
-    mais: 'mais', hist: 'mais', categorias: 'mais', categoriaAdd: 'mais',
-    metas: 'mais', metaAdd: 'mais'
+    hist: 'hist',
+    categorias: 'categorias', categoriaAdd: 'categorias',
+    metas: 'metas', metaAdd: 'metas',
+    parcelas: 'parcelas', parcelaAdd: 'parcelas'
   };
 
   /* ---------------------------------------------------------
@@ -37,17 +46,60 @@
      --------------------------------------------------------- */
 
   function render() {
-    var calculado = Fin.calcular(dados);
+    var calculado = Fin.calcular(dados, estado.contaFiltro);
     var tela = Fin.telas[estado.screen] || Fin.telas.dash;
 
     view.innerHTML = tela(calculado, estado);
     view.scrollTop = 0;
     window.scrollTo(0, 0);
 
-    var abaAtiva = ABA_DA_TELA[estado.screen];
-    tabbar.querySelectorAll('.tab').forEach(function (b) {
-      b.classList.toggle('on', b.dataset.nav === abaAtiva);
+    fab.hidden = FORMULARIOS.indexOf(estado.screen) !== -1;
+
+    var ativo = ITEM_DO_MENU[estado.screen];
+    drawer.querySelectorAll('.drawer-item').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.nav === ativo);
     });
+
+    // Cabeçalho do menu: saldo sempre à mão, e o contador de pendências.
+    var saldoEl = document.getElementById('drawer-saldo');
+    saldoEl.textContent = calculado.saldoFmt;
+    saldoEl.classList.toggle('negative', calculado.saldoNegativo);
+
+    var badge = document.getElementById('drawer-badge');
+    badge.hidden = !calculado.temPendentes;
+    badge.textContent = calculado.qtdPendentes;
+  }
+
+  /* ---------------------------------------------------------
+     Menu lateral
+     --------------------------------------------------------- */
+
+  var menuAberto = false;
+
+  function abrirMenu() {
+    if (menuAberto) return;
+    menuAberto = true;
+    drawer.hidden = false;
+    overlay.hidden = false;
+    // Ler offsetWidth força o navegador a calcular o layout agora, com o
+    // menu ainda fora da tela. Sem isso a transição de entrada não roda.
+    // (Aqui não serve requestAnimationFrame: se o menu fosse fechado antes
+    // do quadro chegar, o callback atrasado reabriria ele sozinho.)
+    void drawer.offsetWidth;
+    drawer.classList.add('on');
+    overlay.classList.add('on');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharMenu() {
+    if (!menuAberto) return;
+    menuAberto = false;
+    drawer.classList.remove('on');
+    overlay.classList.remove('on');
+    document.body.style.overflow = '';
+    setTimeout(function () {
+      if (!menuAberto) { drawer.hidden = true; overlay.hidden = true; }
+    }, 240);
   }
 
   function persistir() {
@@ -60,6 +112,7 @@
   }
 
   function irPara(tela, push) {
+    fecharMenu();
     estado.screen = tela;
     if (push !== false) {
       history.pushState({ screen: tela }, '', '#' + tela);
@@ -233,7 +286,8 @@
             tx: d.tx,
             parcelas: Array.isArray(d.parcelas) ? d.parcelas : [],
             goals: Array.isArray(d.goals) ? d.goals : [],
-            cats: Array.isArray(d.cats) ? d.cats : []
+            cats: Array.isArray(d.cats) ? d.cats : [],
+            pendentes: Array.isArray(d.pendentes) ? d.pendentes : []
           };
           persistir();
           irPara('dash');
@@ -245,6 +299,96 @@
       leitor.readAsText(arquivo);
     });
     input.click();
+  }
+
+  /* ---------------------------------------------------------
+     Extrato do banco
+     O arquivo é lido no próprio aparelho; nada sai daqui.
+     --------------------------------------------------------- */
+
+  function escolherExtrato() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.ofx,.qfx,.csv,.txt,text/csv,text/plain';
+
+    input.addEventListener('change', function () {
+      var arquivo = input.files && input.files[0];
+      if (!arquivo) return;
+
+      var leitor = new FileReader();
+      leitor.onerror = function () { toast('Não consegui ler o arquivo'); };
+      leitor.onload = function () {
+        try {
+          var texto = Fin.decodificar(leitor.result);
+          var lido = Fin.lerExtrato(texto, arquivo.name);
+
+          if (!lido.itens.length) {
+            toast('Não achei movimentações nesse arquivo');
+            return;
+          }
+
+          var res = Fin.filtrarNovos(lido.itens, dados);
+
+          if (!res.novos.length) {
+            toast(res.repetidos + ' movimentação(ões) já importada(s)');
+            return;
+          }
+
+          dados.pendentes = dados.pendentes.concat(res.novos);
+          persistir();
+          irPara('movimentacoes');
+          toast(res.novos.length + ' nova(s) do ' + lido.formato +
+                (res.repetidos ? ' · ' + res.repetidos + ' repetida(s)' : '') + ' ✓');
+        } catch (e) {
+          toast('Arquivo não reconhecido');
+        }
+      };
+      // ArrayBuffer, não texto: o encoding é decidido depois, olhando os bytes.
+      leitor.readAsArrayBuffer(arquivo);
+    });
+
+    input.click();
+  }
+
+  function confirmarPendentes() {
+    if (!dados.pendentes.length) return;
+
+    var semCategoria = dados.pendentes.filter(function (p) { return !p.category; }).length;
+    if (semCategoria &&
+        !confirm(semCategoria + ' movimentação(ões) sem categoria vão entrar como "Outros". Continuar?')) {
+      return;
+    }
+
+    var qtd = dados.pendentes.length;
+
+    dados.pendentes.forEach(function (p) {
+      dados.tx.push({
+        id: p.id,
+        type: p.type,
+        amount: p.amount,
+        category: p.category || 'Outros',
+        note: p.memo,
+        date: p.date,
+        fixed: false,
+        origem: 'extrato',
+        conta: p.conta,
+        fitid: p.fitid
+      });
+    });
+
+    dados.pendentes = [];
+    persistir();
+    render();
+    toast(qtd + ' movimentação(ões) no caixa ✓');
+  }
+
+  function descartarPendentes() {
+    if (!dados.pendentes.length) return;
+    if (!confirm('Descartar as ' + dados.pendentes.length + ' movimentações não confirmadas?')) return;
+    dados.pendentes = [];
+    persistir();
+    render();
+    toast('Movimentações descartadas');
   }
 
   /* ---------------------------------------------------------
@@ -331,12 +475,25 @@
         guardarNaMeta(id, Number(alvo.dataset.amount));
         break;
 
+      case 'abrir-menu': abrirMenu(); break;
+      case 'fechar-menu': fecharMenu(); break;
+
+      case 'escolher-extrato':     escolherExtrato(); break;
+      case 'confirmar-pendentes':  confirmarPendentes(); break;
+      case 'descartar-pendentes':  descartarPendentes(); break;
+      case 'del-pendente':         apagar('pendentes', id, 'Movimentação descartada'); break;
+
+      case 'filtrar-conta':
+        estado.contaFiltro = alvo.dataset.conta || '';
+        render();
+        break;
+
       case 'exportar': exportar(); break;
-      case 'importar': importar(); break;
+      case 'importar-backup': importar(); break;
 
       case 'clear-all':
         if (confirm('Apagar TODOS os dados? Isso não pode ser desfeito.')) {
-          dados = { tx: [], parcelas: [], goals: [], cats: [] };
+          dados = Fin.vazio();
           persistir();
           render();
           toast('Dados apagados');
@@ -364,8 +521,52 @@
     }
   });
 
-  // Botão "voltar" do Android navega entre as telas do app.
+  // Categoria de uma movimentação do extrato: grava sem redesenhar a lista,
+  // para não perder a rolagem no meio da revisão.
+  view.addEventListener('change', function (ev) {
+    var el = ev.target;
+    if (!el.dataset || !el.dataset.pendente) return;
+
+    var id = Number(el.dataset.pendente);
+    var p = dados.pendentes.find(function (x) { return x.id === id; });
+    if (!p) return;
+
+    p.category = el.value;
+    el.classList.toggle('vazio', !el.value);
+    persistir();
+  });
+
+  overlay.addEventListener('click', fecharMenu);
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') fecharMenu();
+  });
+
+  // Arrastar da borda esquerda abre o menu; arrastar sobre ele fecha.
+  var toqueX = null, toqueY = null;
+
+  document.addEventListener('touchstart', function (ev) {
+    var t = ev.touches[0];
+    toqueX = t.clientX;
+    toqueY = t.clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', function (ev) {
+    if (toqueX === null) return;
+    var t = ev.changedTouches[0];
+    var dx = t.clientX - toqueX;
+    var dy = Math.abs(t.clientY - toqueY);
+    var inicioNaBorda = toqueX <= 28;
+    toqueX = null;
+
+    if (dy > Math.abs(dx)) return;            // gesto vertical: é rolagem
+    if (!menuAberto && inicioNaBorda && dx > 55) abrirMenu();
+    else if (menuAberto && dx < -55) fecharMenu();
+  }, { passive: true });
+
+  // Botão "voltar" do Android: fecha o menu antes de trocar de tela.
   window.addEventListener('popstate', function (ev) {
+    if (menuAberto) { fecharMenu(); }
     var tela = (ev.state && ev.state.screen) || 'dash';
     estado.screen = Fin.telas[tela] ? tela : 'dash';
     render();
@@ -376,6 +577,8 @@
      --------------------------------------------------------- */
 
   var telaInicial = (location.hash || '').replace('#', '');
+  // "mais" era a tela antiga de atalhos, hoje substituída pelo menu lateral.
+  if (telaInicial === 'mais') telaInicial = 'dash';
   estado.screen = Fin.telas[telaInicial] ? telaInicial : 'dash';
   history.replaceState({ screen: estado.screen }, '', '#' + estado.screen);
   render();

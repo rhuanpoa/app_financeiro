@@ -20,6 +20,16 @@ window.Fin = window.Fin || {};
     return ICONE_FECHAR.replace('{{destino}}', destino);
   }
 
+  // Botão que abre o menu lateral. Vai no topo de toda página principal
+  // (as telas de formulário usam o ✕ no lugar).
+  function menu() {
+    return '<div class="topbar">' +
+             '<button class="icon-btn" data-action="abrir-menu" type="button" aria-label="Abrir menu">' +
+               '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' +
+             '</button>' +
+           '</div>';
+  }
+
   function vazio(titulo, texto) {
     return '<div class="card dashed">' +
              '<div class="empty-title">' + titulo + '</div>' +
@@ -82,15 +92,22 @@ window.Fin = window.Fin || {};
   Fin.telas.dash = function (v) {
     var h = '<div class="screen">';
 
+    h += menu();
+
     h += '<div class="head">' +
            '<div>' +
              '<div class="head-eyebrow">' + v.saudacao + '</div>' +
              '<div class="head-title">Suas finanças</div>' +
            '</div>' +
-           '<button class="icon-btn" data-nav="mais" type="button" aria-label="Mais">' +
-             '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>' +
-           '</button>' +
          '</div>';
+
+    // Atalho para revisar o que veio do extrato e ainda não entrou no caixa.
+    if (v.temPendentes) {
+      h += '<button class="aviso" style="display:block;width:100%;text-align:left;margin-bottom:16px" data-nav="movimentacoes" type="button">' +
+             '<b>' + v.qtdPendentes + ' movimentação(ões) do extrato</b> esperando você conferir a categoria. ' +
+             'Elas ainda não entraram no saldo. Toque para revisar ›' +
+           '</button>';
+    }
 
     h += '<div class="balance-card">' +
            '<div class="balance-label">Saldo atual</div>' +
@@ -227,7 +244,8 @@ window.Fin = window.Fin || {};
   Fin.telas.parcelas = function (v) {
     var h = '<div class="screen">';
 
-    h += '<div class="head"><div>' +
+    h += menu() +
+         '<div class="head"><div>' +
            '<div class="head-title">Compras parceladas</div>' +
            '<div class="head-sub">Acompanhe o que ainda falta pagar</div>' +
          '</div></div>';
@@ -325,7 +343,8 @@ window.Fin = window.Fin || {};
     var p = v.previsao;
     var h = '<div class="screen">';
 
-    h += '<div class="head"><div>' +
+    h += menu() +
+         '<div class="head"><div>' +
            '<div class="head-title">Previsão</div>' +
            '<div class="head-sub">Projeção do seu saldo nos próximos 12 meses</div>' +
          '</div></div>';
@@ -377,7 +396,8 @@ window.Fin = window.Fin || {};
   Fin.telas.hist = function (v) {
     var h = '<div class="screen">';
 
-    h += '<div class="head"><div>' +
+    h += menu() +
+         '<div class="head"><div>' +
            '<div class="head-title">Histórico</div>' +
            '<div class="head-sub">Tudo o que entrou e saiu</div>' +
          '</div></div>';
@@ -427,7 +447,8 @@ window.Fin = window.Fin || {};
 
     var h = '<div class="screen">';
 
-    h += '<div class="head"><div>' +
+    h += menu() +
+         '<div class="head"><div>' +
            '<div class="head-title">Categorias</div>' +
            '<div class="head-sub">Quanto entrou e saiu em cada uma</div>' +
          '</div></div>';
@@ -486,7 +507,8 @@ window.Fin = window.Fin || {};
   Fin.telas.metas = function (v) {
     var h = '<div class="screen">';
 
-    h += '<div class="head"><div>' +
+    h += menu() +
+         '<div class="head"><div>' +
            '<div class="head-title">Metas de economia</div>' +
            '<div class="head-sub">Guarde para seus objetivos</div>' +
          '</div></div>';
@@ -550,37 +572,145 @@ window.Fin = window.Fin || {};
   };
 
   /* =========================================================
-     Mais
+     Importar extrato
      ========================================================= */
 
-  Fin.telas.mais = function () {
-    var atalhos = [
-      { nav: 'hist', t: 'Histórico', s: 'Todos os lançamentos',
-        svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>' },
-      { nav: 'categorias', t: 'Categorias', s: 'Gasto por categoria',
-        svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v8.5l6 3" stroke-linecap="round"/></svg>' },
-      { nav: 'metas', t: 'Metas', s: 'Objetivos de economia',
-        svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/></svg>' },
-      { nav: 'parcelas', t: 'Parcelas', s: 'Compras no cartão',
-        svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 13l9 5 9-5" stroke-linecap="round"/></svg>' }
+  Fin.telas.importar = function () {
+    var formatos = [
+      { tag: 'OFX', ok: true, t: 'OFX / Money',
+        s: 'O melhor formato. Traz um código único por transação, então dá para reimportar o mesmo extrato sem duplicar nada.' },
+      { tag: 'CSV', ok: true, t: 'CSV / planilha',
+        s: 'Reconhece as colunas de data, descrição e valor sozinho, inclusive quando crédito e débito vêm separados.' },
+      { tag: 'PDF', ok: false, t: 'PDF — ainda não',
+        s: 'Cada banco usa um layout diferente de PDF. Procure por “exportar OFX” ou “exportar CSV” no app do seu banco.' }
     ];
 
     return '<div class="screen">' +
-             '<div class="head"><div class="head-title">Mais</div></div>' +
-             '<div class="grid-2">' +
-               atalhos.map(function (a) {
-                 return '<button class="tile" data-nav="' + a.nav + '" type="button">' +
-                          '<div class="bubble">' + a.svg + '</div>' +
-                          '<div class="t">' + a.t + '</div>' +
-                          '<div class="s">' + a.s + '</div>' +
-                        '</button>';
+             menu() +
+             '<div class="head"><div>' +
+               '<div class="head-title">Importar extrato</div>' +
+               '<div class="head-sub">Traga as movimentações do seu banco</div>' +
+             '</div></div>' +
+
+             '<button class="dropzone" data-action="escolher-extrato" type="button">' +
+               '<div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 20h16"/></svg></div>' +
+               '<div class="t">Escolher arquivo</div>' +
+               '<div class="s">Baixe o extrato no app do banco e selecione aqui</div>' +
+             '</button>' +
+
+             '<div class="formatos">' +
+               formatos.map(function (f) {
+                 return '<div class="formato">' +
+                          '<span class="tag' + (f.ok ? ' ok' : '') + '">' + f.tag + '</span>' +
+                          '<div><div class="t">' + f.t + '</div><div class="s">' + f.s + '</div></div>' +
+                        '</div>';
                }).join('') +
              '</div>' +
-             '<button class="btn-ghost" style="margin-top:20px;margin-bottom:0" data-action="exportar" type="button">Exportar backup (.json)</button>' +
-             '<button class="btn-ghost" style="margin-top:10px;margin-bottom:0" data-action="importar" type="button">Restaurar backup</button>' +
-             '<button class="btn-danger" data-action="clear-all" type="button">Apagar todos os dados</button>' +
-             '<div class="hint">Seus dados ficam salvos só neste aparelho.</div>' +
+
+             '<div class="hint" style="margin-top:18px;line-height:1.6">O arquivo é lido aqui mesmo, no seu celular.<br>Nada é enviado para a internet.</div>' +
            '</div>';
+  };
+
+  /* =========================================================
+     Movimentações
+     ========================================================= */
+
+  Fin.telas.movimentacoes = function (v, estado) {
+    var m = v.movimentos;
+    var h = '<div class="screen">' + menu();
+
+    h += '<div class="head"><div>' +
+           '<div class="head-title">Movimentações</div>' +
+           '<div class="head-sub">O que veio do extrato do banco</div>' +
+         '</div></div>';
+
+    /* ---- fila de revisão ---- */
+    if (v.temPendentes) {
+      h += '<div class="aviso">' +
+             '<b>' + v.qtdPendentes + ' movimentação(ões) para revisar.</b> ' +
+             'Confira a categoria sugerida e confirme — só então elas entram no saldo, ' +
+             'no histórico e na previsão.' +
+           '</div>';
+
+      h += '<div class="acoes-pend">' +
+             '<button class="btn-primary" data-action="confirmar-pendentes" type="button">' +
+               'Confirmar ' + v.qtdPendentes +
+             '</button>' +
+             '<button class="btn-secundario" data-action="descartar-pendentes" type="button">Descartar</button>' +
+           '</div>';
+
+      if (v.faltaCategoria) {
+        h += '<div class="hint" style="margin:-8px 0 14px">' +
+               v.faltaCategoria + ' sem categoria — vão entrar como <b>Outros</b> se você confirmar assim.' +
+             '</div>';
+      }
+
+      h += '<div class="stack tight" style="margin-bottom:26px">' +
+        v.pendentes.map(function (p) {
+          var opcoes = Fin.catsDe(p.type).map(function (c) {
+            return '<option value="' + esc(c.name) + '"' +
+                   (c.name === p.category ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+          }).join('');
+
+          return '<div class="pend">' +
+                   '<div class="pend-topo">' +
+                     '<div class="body">' +
+                       '<div class="title">' + esc(p.memo) + '</div>' +
+                       '<div class="meta">' + esc(p.meta) + '</div>' +
+                     '</div>' +
+                     '<div class="amount mono ' + p.amountClass + '">' + p.amountFmt + '</div>' +
+                     '<button class="del" data-action="del-pendente" data-id="' + p.id + '" type="button" aria-label="Descartar">✕</button>' +
+                   '</div>' +
+                   '<select data-pendente="' + p.id + '" class="' + (p.category ? '' : 'vazio') + '">' +
+                     '<option value="">Escolher categoria…</option>' + opcoes +
+                   '</select>' +
+                 '</div>';
+        }).join('') +
+      '</div>';
+    }
+
+    /* ---- nada importado ainda ---- */
+    if (!m.temImportados) {
+      if (!v.temPendentes) {
+        h += '<div class="card dashed" style="margin-bottom:16px">' +
+               '<div class="empty-title">Nenhum extrato importado</div>' +
+               '<div class="empty-text">Traga o extrato do seu banco em OFX ou CSV e as movimentações aparecem aqui, prontas para categorizar.</div>' +
+             '</div>';
+      }
+      h += '<button class="btn-primary" data-nav="importar" type="button">Importar extrato</button>';
+      return h + '</div>';
+    }
+
+    /* ---- resumo do que já foi importado ---- */
+    h += '<div class="resumo-import">' +
+           '<div class="t">' + m.total + ' movimentação(ões) importada(s)</div>' +
+           '<div class="n mono">' + m.saldoFmt + '</div>' +
+           '<div class="s">' + m.entradasFmt + ' entrou · ' + m.saidasFmt + ' saiu</div>' +
+         '</div>';
+
+    if (m.contas.length > 1) {
+      h += '<div class="contas">' +
+             '<button class="conta-chip' + (estado.contaFiltro ? '' : ' on') + '" data-action="filtrar-conta" data-conta="" type="button">Todas</button>' +
+             m.contas.map(function (c) {
+               return '<button class="conta-chip' + (estado.contaFiltro === c ? ' on' : '') + '" ' +
+                      'data-action="filtrar-conta" data-conta="' + esc(c) + '" type="button">' + esc(c) + '</button>';
+             }).join('') +
+           '</div>';
+    }
+
+    h += m.grupos.map(function (g) {
+      return '<div class="group-head">' +
+               '<div class="l">' + g.label + '</div>' +
+               '<div class="v mono ' + g.totalClass + '">' + g.totalFmt + '</div>' +
+             '</div>' +
+             '<div class="stack tight">' +
+               g.items.map(function (t) { return linhaTx(t, true); }).join('') +
+             '</div>';
+    }).join('');
+
+    h += '<button class="btn-ghost" style="margin-top:22px;margin-bottom:0" data-nav="importar" type="button">Importar outro extrato</button>';
+
+    return h + '</div>';
   };
 
 })(window.Fin);

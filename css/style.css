@@ -20,8 +20,6 @@
   --on-deep:   #f4f3ee;
   --on-deep-2: #9db3a6;
 
-  --tab-h:     86px;
-
   --safe-top:    env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -73,9 +71,17 @@ svg { display: block; }
   padding:
     calc(var(--safe-top) + 12px)
     20px
-    calc(var(--tab-h) + var(--safe-bottom) + 24px);
+    calc(var(--safe-bottom) + 104px);   /* espaço para o botão flutuante */
   max-width: 560px;   /* em telas largas o app não estica feio */
   margin: 0 auto;
+}
+
+/* Linha do botão de menu, acima do título de cada página */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 2px 10px;
 }
 
 @keyframes screen-in {
@@ -673,7 +679,9 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
   padding: 12px;
 }
 
-.hint { text-align: center; font-size: 11px; color: var(--faint); margin-top: 8px; }
+/* Texto de apoio. Usa --muted, e não --faint, porque costuma carregar
+   informação que muda o que acontece (ex.: "vão entrar como Outros"). */
+.hint { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
 
 /* Prévia do valor da parcela */
 .preview {
@@ -733,57 +741,326 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
 }
 
 /* ---------------------------------------------------------
-   Barra de navegação
+   Botão flutuante de novo lançamento
    --------------------------------------------------------- */
 
-.tabbar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 30;
-  height: calc(var(--tab-h) + var(--safe-bottom));
-  padding-bottom: calc(14px + var(--safe-bottom));
-  background: rgba(244, 243, 238, .94);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-top: 1px solid var(--line);
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  align-items: center;
-  max-width: 560px;
-  margin: 0 auto;
-}
-
-.tab {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  color: #a8a99e;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.tab.on { color: var(--deep); }
-.tab svg { width: 23px; height: 23px; }
-
-.tab-fab-slot { display: flex; justify-content: center; }
-
 .fab {
-  width: 56px;
-  height: 56px;
-  border-radius: 20px;
+  position: fixed;
+  right: 20px;
+  bottom: calc(var(--safe-bottom) + 24px);
+  z-index: 25;
+  width: 60px;
+  height: 60px;
+  border-radius: 21px;
   background: var(--deep);
   color: var(--on-deep);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: -26px;
   box-shadow: 0 10px 24px rgba(20, 52, 43, .4);
 }
 
-.fab svg { width: 26px; height: 26px; }
+.fab svg { width: 27px; height: 27px; }
+.fab[hidden] { display: none; }
+
+/* Em telas largas o botão acompanha a coluna do conteúdo */
+@media (min-width: 600px) {
+  .fab { right: calc(50% - 280px + 20px); }
+}
+
+/* ---------------------------------------------------------
+   Menu lateral
+   --------------------------------------------------------- */
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(25, 28, 23, .45);
+  opacity: 0;
+  transition: opacity .22s ease;
+}
+
+.drawer-overlay.on { opacity: 1; }
+.drawer-overlay[hidden] { display: none; }
+
+.drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 41;
+  width: 82vw;
+  max-width: 300px;
+  background: var(--surface);
+  box-shadow: 6px 0 30px rgba(0, 0, 0, .18);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-102%);
+  transition: transform .24s cubic-bezier(.32, .72, 0, 1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: var(--safe-bottom);
+}
+
+.drawer.on { transform: none; }
+.drawer[hidden] { display: none; }
+
+.drawer-head {
+  background: var(--deep);
+  color: var(--on-deep);
+  padding: calc(var(--safe-top) + 26px) 22px 22px;
+  flex: none;
+}
+
+.drawer-brand { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+
+.drawer-saldo {
+  font-size: 24px;
+  font-weight: 600;
+  margin-top: 6px;
+  letter-spacing: -.02em;
+}
+
+.drawer-saldo.negative { color: #f0a58f; }
+
+.drawer-nav { padding: 10px 12px; flex: 1; }
+
+.drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: 13px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.drawer-item svg { width: 20px; height: 20px; flex: none; color: var(--ink-soft); }
+.drawer-item span { flex: 1; }
+
+.drawer-item.on { background: #eef1ea; color: var(--deep); font-weight: 700; }
+.drawer-item.on svg { color: var(--deep); }
+
+.drawer-item.danger { color: var(--red); }
+.drawer-item.danger svg { color: var(--red); }
+
+/* Contador de movimentações esperando revisão */
+.drawer-badge {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--red);
+  color: #fff;
+  border-radius: 20px;
+  padding: 2px 8px;
+  flex: none;
+}
+
+.drawer-badge[hidden] { display: none; }
+
+.drawer-sep {
+  height: 1px;
+  background: var(--line);
+  margin: 10px 14px;
+}
+
+.drawer-foot {
+  padding: 14px 22px calc(20px + var(--safe-bottom));
+  font-size: 11px;
+  color: var(--faint);
+  line-height: 1.5;
+  flex: none;
+}
+
+/* ---------------------------------------------------------
+   Importar extrato / Movimentações
+   --------------------------------------------------------- */
+
+/* Área de escolher arquivo */
+.dropzone {
+  display: block;
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px dashed rgba(20, 52, 43, .3);
+  border-radius: 20px;
+  padding: 30px 22px;
+  text-align: center;
+}
+
+.dropzone .ico {
+  width: 52px;
+  height: 52px;
+  border-radius: 17px;
+  background: #eef1ea;
+  color: var(--deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+}
+
+.dropzone .ico svg { width: 24px; height: 24px; }
+.dropzone .t { font-size: 16px; font-weight: 700; color: var(--deep); }
+.dropzone .s { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+
+/* Lista de formatos aceitos */
+.formatos { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+
+.formato {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.formato .tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  background: var(--track);
+  color: var(--ink-soft);
+  border-radius: 7px;
+  padding: 4px 8px;
+  flex: none;
+  margin-top: 1px;
+}
+
+.formato .tag.ok { background: #e5f2ea; color: var(--green); }
+.formato .t { font-size: 13px; font-weight: 700; }
+.formato .s { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+
+/* Faixa de aviso sobre a revisão pendente */
+.aviso {
+  background: #fdf6ec;
+  border: 1px solid #f0e2cc;
+  border-radius: 16px;
+  padding: 14px 16px;
+  font-size: 12px;
+  color: #7a6a4a;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.aviso b { color: #6a5a3a; }
+
+/* Linha de movimentação a revisar */
+.pend {
+  background: var(--surface);
+  border: 1px solid rgba(0, 0, 0, .05);
+  border-radius: 16px;
+  padding: 13px 15px;
+}
+
+.pend-topo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pend-topo .body { flex: 1; min-width: 0; }
+
+.pend-topo .title {
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pend-topo .meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.pend-topo .amount { font-size: 14px; font-weight: 600; white-space: nowrap; }
+
+/* Seletor de categoria — compacto, porque a lista pode ser longa */
+.pend select {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid var(--line-2);
+  background: var(--bg);
+  border-radius: 11px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  /* seta desenhada no próprio fundo, para não depender de imagem externa */
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%),
+    linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+  background-position: right 16px center, right 11px center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+
+.pend select:focus { border-color: var(--deep); }
+.pend select.vazio { color: var(--muted); border-style: dashed; }
+
+/* Barra fixa de confirmar, para não precisar rolar até o fim */
+.acoes-pend {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 18px;
+}
+
+.acoes-pend .btn-primary,
+.acoes-pend .btn-secundario { margin: 0; }
+
+.btn-secundario {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  color: var(--ink-soft);
+  text-align: center;
+  padding: 17px 18px;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  flex: none;
+}
+
+/* Resumo por conta importada */
+.contas { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+
+.conta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: 22px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1.5px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+.conta-chip.on {
+  border-color: var(--deep);
+  background: #eef1ea;
+  color: var(--deep);
+  font-weight: 700;
+}
+
+/* Cartão com o resultado da última importação */
+.resumo-import {
+  background: var(--deep);
+  color: var(--on-deep);
+  border-radius: 20px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.resumo-import .t { font-size: 13px; color: var(--on-deep-2); font-weight: 600; }
+.resumo-import .n { font-size: 26px; font-weight: 600; margin-top: 4px; }
+.resumo-import .s { font-size: 12px; color: var(--on-deep-2); margin-top: 6px; line-height: 1.5; }
 
 /* ---------------------------------------------------------
    Toast
@@ -796,7 +1073,7 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
 
 .toast {
   position: fixed;
-  bottom: calc(var(--tab-h) + var(--safe-bottom) + 16px);
+  bottom: calc(var(--safe-bottom) + 100px);
   left: 50%;
   transform: translateX(-50%);
   background: var(--ink);

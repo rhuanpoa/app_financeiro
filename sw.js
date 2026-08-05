@@ -4,7 +4,7 @@
    Suba o número da versão sempre que mexer no HTML/CSS/JS.
    ========================================================= */
 
-var VERSAO = 'financas-v3';
+var VERSAO = 'financas-v4';
 
 var ARQUIVOS = [
   './',
@@ -12,6 +12,7 @@ var ARQUIVOS = [
   './css/style.css',
   './js/store.js',
   './js/calc.js',
+  './js/importar.js',
   './js/screens.js',
   './js/app.js',
   './manifest.webmanifest',

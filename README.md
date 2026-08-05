@@ -7,6 +7,9 @@ sem servidor e sem cadastro — os dados ficam salvos no próprio aparelho.
 
 - **Saldo** com entradas e saídas do mês
 - **Lançamentos** de saída/entrada com categoria, data e a opção "repete todo mês"
+- **Importar extrato do banco** em OFX ou CSV, com categoria sugerida
+  automaticamente e revisão antes de entrar no caixa
+- **Movimentações**: o que veio do extrato, com filtro por conta
 - **Compras parceladas** com acompanhamento de quantas parcelas já foram pagas
 - **Previsão de 12 meses** (entradas fixas − gastos fixos − parcelas − média de gastos variáveis)
 - **Histórico** agrupado por mês
@@ -18,10 +21,11 @@ sem servidor e sem cadastro — os dados ficam salvos no próprio aparelho.
 ## Estrutura
 
 ```
-index.html               estrutura da página e barra de navegação
+index.html               estrutura da página e menu lateral
 css/style.css            todo o visual
 js/store.js              categorias, localStorage, formatação (R$, datas)
 js/calc.js               cálculos: saldo, previsão, parcelas, categorias, metas
+js/importar.js           leitura de extrato (OFX e CSV) e palpite de categoria
 js/screens.js            HTML de cada tela
 js/app.js                estado, navegação e eventos
 manifest.webmanifest     dados para instalar na tela inicial
@@ -67,6 +71,25 @@ var VERSAO = 'financas-v2';   // era v1
 ```
 
 Sem isso o celular pode continuar abrindo a versão antiga.
+
+## Importar extrato
+
+No app do banco, procure por **exportar OFX** (às vezes chamado de "Money",
+"MSMoney" ou "OFX") ou **exportar CSV**. Depois, no app: menu → *Importar
+extrato* → escolher o arquivo.
+
+- **OFX** é o melhor formato: cada transação vem com um código único (`FITID`),
+  então dá para reimportar o mesmo extrato sem duplicar nada.
+- **CSV** também funciona. As colunas de data, descrição e valor são
+  reconhecidas sozinhas, em português ou inglês, inclusive quando crédito e
+  débito vêm em colunas separadas. Sem `FITID`, a repetição é detectada por
+  data + valor + descrição.
+- **PDF ainda não é suportado**: cada banco usa um layout diferente, então
+  não existe leitura genérica confiável.
+
+O que é importado fica numa fila de revisão em *Movimentações* e **não entra no
+saldo até você confirmar**. O arquivo é lido dentro do próprio navegador —
+nada é enviado para a internet.
 
 ## Sobre os dados
 

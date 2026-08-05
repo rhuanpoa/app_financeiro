@@ -74,22 +74,26 @@ window.Fin = window.Fin || {};
 
   /* ---------- persistência ---------- */
 
+  Fin.vazio = function () {
+    return { tx: [], parcelas: [], goals: [], cats: [], pendentes: [] };
+  };
+
   Fin.carregar = function () {
-    var vazio = { tx: [], parcelas: [], goals: [], cats: [] };
     try {
       var bruto = localStorage.getItem(CHAVE);
-      if (!bruto) return vazio;
+      if (!bruto) return Fin.vazio();
       var d = JSON.parse(bruto);
       return {
         tx:       Array.isArray(d.tx) ? d.tx : [],
         parcelas: Array.isArray(d.parcelas) ? d.parcelas : [],
         goals:    Array.isArray(d.goals) ? d.goals : [],
-        // `cats` não existia nas primeiras versões: quem já usava o app
-        // continua funcionando, só sem categorias próprias.
-        cats:     Array.isArray(d.cats) ? d.cats : []
+        // `cats` e `pendentes` não existiam nas primeiras versões: quem já
+        // usava o app continua funcionando, só sem esses recursos.
+        cats:      Array.isArray(d.cats) ? d.cats : [],
+        pendentes: Array.isArray(d.pendentes) ? d.pendentes : []
       };
     } catch (e) {
-      return vazio;
+      return Fin.vazio();
     }
   };
 
@@ -97,7 +101,8 @@ window.Fin = window.Fin || {};
     try {
       localStorage.setItem(CHAVE, JSON.stringify({
         tx: dados.tx, parcelas: dados.parcelas,
-        goals: dados.goals, cats: dados.cats
+        goals: dados.goals, cats: dados.cats,
+        pendentes: dados.pendentes
       }));
       return true;
     } catch (e) {
