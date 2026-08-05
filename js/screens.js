@@ -64,6 +64,57 @@ window.Fin = window.Fin || {};
       }).join('') + '</div>';
   }
 
+  /* Gráfico de barras horizontais por categoria.
+     Uma cor só por gráfico (vermelho para saídas, verde para entradas):
+     as cores das categorias não se distinguem entre si sob daltonismo, então
+     quem identifica cada linha é o nome, sempre escrito. O ponto colorido
+     ao lado apenas reforça o que o texto já diz.
+     Ordenado do maior para o menor — o topo é onde mais entrou ou saiu,
+     a base é onde menos. */
+  function graficoCategorias(titulo, resumo, opts) {
+    opts = opts || {};
+    if (!resumo.temDados) {
+      return opts.esconderVazio ? '' :
+        '<div class="grafico">' +
+          '<div class="grafico-topo"><div class="grafico-titulo">' + titulo + '</div></div>' +
+          '<div class="grafico-vazio">Nada registrado neste período.</div>' +
+        '</div>';
+    }
+
+    var entrada = resumo.tipo === 'in';
+
+    return '<div class="grafico">' +
+             '<div class="grafico-topo">' +
+               '<div class="grafico-titulo">' + titulo + '</div>' +
+               '<div class="grafico-total mono ' + (entrada ? 'in' : 'out') + '">' +
+                 (entrada ? '+ ' : '− ') + resumo.totalFmt +
+               '</div>' +
+             '</div>' +
+             '<div class="chart-cat">' +
+               resumo.linhas.map(function (l) {
+                 return '<div class="chart-row">' +
+                          '<div class="chart-head">' +
+                            '<i class="chart-dot" style="background:' + l.color + '"></i>' +
+                            '<span class="chart-nome">' + esc(l.name) + '</span>' +
+                            (opts.mostrarShare
+                              ? '<span class="chart-share mono">' + l.sharePct + '%</span>'
+                              : '') +
+                            '<span class="chart-valor mono">' + l.valorFmt + '</span>' +
+                          '</div>' +
+                          '<div class="chart-track">' +
+                            // A linha agrupada vai em cinza: ela é o resto,
+                            // não mais uma categoria, e fica sempre por último
+                            // mesmo quando somar mais que as de cima.
+                            '<i class="chart-fill ' +
+                              (l.agrupada ? 'resto' : (entrada ? 'in' : 'out')) + '" ' +
+                              'style="width:' + l.larguraPct + '%"></i>' +
+                          '</div>' +
+                        '</div>';
+               }).join('') +
+             '</div>' +
+           '</div>';
+  }
+
   function campo(opts) {
     return '<input class="field ' + (opts.mono ? 'mono' : '') + '"' +
            ' type="' + (opts.type || 'text') + '"' +
@@ -146,6 +197,12 @@ window.Fin = window.Fin || {};
              }).join('') +
            '</div>' +
          '</button>';
+
+    if (v.mesSaida.temDados || v.mesEntrada.temDados) {
+      h += '<div class="section-title">Por categoria · ' + v.nomeDoMes + '</div>';
+      h += graficoCategorias('Onde o dinheiro saiu', v.mesSaida, { esconderVazio: true });
+      h += graficoCategorias('De onde o dinheiro veio', v.mesEntrada, { esconderVazio: true });
+    }
 
     h += '<div class="section-bar">' +
            '<div style="font-size:15px;font-weight:800">Últimos lançamentos</div>' +
@@ -684,6 +741,13 @@ window.Fin = window.Fin || {};
              }).join('') +
            '</div>';
     }
+
+    // Gráficos sobre o que está listado nesta tela (respeitam o filtro de conta)
+    h += '<div class="section-title" style="margin-top:20px">Por categoria</div>';
+    h += graficoCategorias('Onde mais saiu', m.catsSaida, { mostrarShare: true });
+    h += graficoCategorias('De onde mais veio', m.catsEntrada, { mostrarShare: true });
+
+    h += '<div class="section-title" style="margin-top:22px">Lançamentos</div>';
 
     h += m.grupos.map(function (g) {
       return '<div class="group-head">' +

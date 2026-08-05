@@ -197,6 +197,67 @@ window.Fin = window.Fin || {};
     }).sort(function (a, b) { return b._v - a._v; });
   }
 
+  /* ---------- ranking por categoria (base dos gráficos) ----------
+
+     Barras horizontais ordenadas da maior para a menor: a mesma figura
+     responde "onde gastei mais" (topo) e "onde gastei menos" (base).
+
+     A cor da barra é uma só por gráfico, e não uma por categoria: as 12
+     cores do app não passam nos testes de daltonismo entre si (duas delas
+     ficam com ΔE 1.0 sob deuteranopia). Quem carrega a identidade aqui é
+     o nome escrito em toda linha; o pontinho colorido só reforça.        */
+
+  function porCategoria(tx, tipo, limite) {
+    var soma = {}, total = 0;
+
+    tx.forEach(function (t) {
+      if (t.type !== tipo) return;
+      soma[t.category] = (soma[t.category] || 0) + t.amount;
+      total += t.amount;
+    });
+
+    var linhas = Object.keys(soma).map(function (nome) {
+      return { name: nome, valor: soma[nome], color: Fin.cor(nome) };
+    }).sort(function (a, b) { return b.valor - a.valor; });
+
+    // Cauda longa vira uma linha só, em vez de virar ruído.
+    if (limite && linhas.length > limite) {
+      var resto = linhas.slice(limite - 1);
+      var somaResto = resto.reduce(function (a, c) { return a + c.valor; }, 0);
+      linhas = linhas.slice(0, limite - 1);
+      linhas.push({
+        name: 'Outras (' + resto.length + ')',
+        valor: somaResto,
+        color: '#8a8c80',
+        agrupada: true
+      });
+    }
+
+    var maior = linhas.reduce(function (m, l) { return Math.max(m, l.valor); }, 0) || 1;
+
+    return {
+      tipo: tipo,
+      total: total,
+      totalFmt: Fin.fmt(total),
+      temDados: linhas.length > 0,
+      qtd: linhas.length,
+      linhas: linhas.map(function (l) {
+        return {
+          name: l.name,
+          color: l.color,
+          agrupada: !!l.agrupada,
+          valorFmt: Fin.fmt(l.valor),
+          // largura relativa à maior categoria, que é como a tela de
+          // Categorias já desenha — mantém a leitura consistente
+          larguraPct: Math.max(2, Math.round(l.valor / maior * 100)),
+          sharePct: total ? Math.round(l.valor / total * 100) : 0
+        };
+      })
+    };
+  }
+
+  Fin.porCategoria = porCategoria;
+
   /* ---------- metas ---------- */
 
   function verMetas(goals) {
@@ -253,6 +314,10 @@ window.Fin = window.Fin || {};
     return {
       contas: contas,
       total: filtrados.length,
+      // Gráficos da tela de Movimentações, sobre o que está listado nela
+      // (respeitando o filtro de conta).
+      catsSaida: porCategoria(filtrados, 'out', 9),
+      catsEntrada: porCategoria(filtrados, 'in', 7),
       temImportados: doExtrato.length > 0,
       entradasFmt: '+ ' + Fin.fmt(entradas),
       saidasFmt: '− ' + Fin.fmt(saidas),
@@ -271,6 +336,10 @@ window.Fin = window.Fin || {};
 
     var s = saldo(dados.tx);
     var mes = totaisDoMes(dados.tx, mesAtual);
+
+    var doMes = dados.tx.filter(function (t) {
+      return Fin.indiceMes(Fin.paraData(t.date)) === mesAtual;
+    });
     var ordenado = dados.tx.slice().sort(function (a, b) { return b.id - a.id; });
     var proj = previsao(dados, s, mesAtual);
 
@@ -282,6 +351,11 @@ window.Fin = window.Fin || {};
       saldoNegativo: s < 0,
       entradasMesFmt: '+ ' + Fin.fmt(mes.entradas),
       saidasMesFmt: '− ' + Fin.fmt(mes.saidas),
+
+      // Gráficos do Início: só o mês corrente, que é o que o painel conta.
+      nomeDoMes: Fin.MESES[agora.getMonth()],
+      mesSaida: porCategoria(doMes, 'out', 6),
+      mesEntrada: porCategoria(doMes, 'in', 4),
 
       temTx: dados.tx.length > 0,
       recentes: ordenado.slice(0, 6).map(verTx),

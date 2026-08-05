@@ -929,6 +929,92 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
 }
 
 /* ---------------------------------------------------------
+   Gráfico de categorias
+
+   Barras finas, trilho discreto, ponta arredondada só no lado
+   onde o dado termina — a base fica reta. Sem grade e sem eixo:
+   o valor de cada linha está escrito ao lado.
+   --------------------------------------------------------- */
+
+.grafico {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+}
+
+.grafico + .grafico { margin-top: 12px; }
+
+.grafico-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.grafico-titulo { font-size: 14px; font-weight: 800; }
+.grafico-total { font-size: 14px; font-weight: 600; }
+.grafico-total.in  { color: var(--green); }
+.grafico-total.out { color: var(--red); }
+
+.grafico-vazio { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+.chart-cat { display: flex; flex-direction: column; gap: 14px; }
+
+.chart-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chart-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  display: block;
+}
+
+.chart-nome {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Números ficam em tinta neutra: a cor é do dado, não do texto */
+.chart-share { font-size: 11px; color: var(--muted); font-weight: 600; flex: none; }
+.chart-valor { font-size: 13px; font-weight: 600; flex: none; }
+
+.chart-track {
+  height: 8px;
+  background: var(--track);
+  border-radius: 4px;
+  margin-top: 7px;
+  overflow: hidden;
+}
+
+.chart-fill {
+  display: block;
+  height: 100%;
+  /* reta na base (esquerda), arredondada onde o dado termina */
+  border-radius: 0 4px 4px 0;
+}
+
+.chart-fill.out { background: var(--red); }
+.chart-fill.in  { background: var(--green); }
+
+/* O agrupado "Outras" é contexto, não uma categoria: fica em cinza para
+   não competir com as barras reais. Valor sempre escrito ao lado, então
+   o cinza mais claro não esconde nada. */
+.chart-fill.resto { background: var(--muted); }
+
+/* ---------------------------------------------------------
    Importar extrato / Movimentações
    --------------------------------------------------------- */
 

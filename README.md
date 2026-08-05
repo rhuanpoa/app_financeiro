@@ -10,6 +10,8 @@ sem servidor e sem cadastro — os dados ficam salvos no próprio aparelho.
 - **Importar extrato do banco** em OFX ou CSV, com categoria sugerida
   automaticamente e revisão antes de entrar no caixa
 - **Movimentações**: o que veio do extrato, com filtro por conta
+- **Gráficos por categoria** no Início (mês corrente) e em Movimentações,
+  ordenados do maior para o menor
 - **Compras parceladas** com acompanhamento de quantas parcelas já foram pagas
 - **Previsão de 12 meses** (entradas fixas − gastos fixos − parcelas − média de gastos variáveis)
 - **Histórico** agrupado por mês
@@ -117,6 +119,22 @@ escolhe um PDF pela primeira vez — ela não pesa na abertura do app.
 O que é importado fica numa fila de revisão em *Movimentações* e **não entra no
 saldo até você confirmar**. O arquivo é lido dentro do próprio navegador —
 nada é enviado para a internet.
+
+## Sobre os gráficos
+
+Barras horizontais ordenadas da maior para a menor — a mesma figura responde
+"onde gastei mais" (topo) e "onde gastei menos" (base).
+
+Cada gráfico usa **uma cor só** (vermelho para saídas, verde para entradas), e
+não uma cor por categoria. As 12 cores de categoria do app não se distinguem
+entre si num gráfico: validadas, duas delas ficam com ΔE 1.0 sob deuteranopia
+e 9.6 até com visão normal. Quem identifica cada linha é o **nome, sempre
+escrito**; o ponto colorido ao lado apenas reforça, nunca é a única pista.
+
+A cauda longa vira uma linha **"Outras (n)"** em cinza — ela é o resto, não
+mais uma categoria, e por isso fica sempre por último mesmo quando soma mais
+que as de cima. Todo valor aparece escrito, então nada depende de passar o
+dedo em cima.
 
 ## Sobre os dados
 
