@@ -291,21 +291,241 @@ window.Fin = window.Fin || {};
   };
 
   /* ---------------------------------------------------------
+     PDF
+
+     Ao contrário do OFX e do CSV, PDF não tem estrutura: é texto
+     solto com coordenadas. A leitura reagrupa os pedaços em linhas
+     pela altura (y) e identifica as colunas pela posição (x).
+
+     Testado com o extrato de conta corrente do Banco do Brasil.
+     Outros bancos caem no modo genérico, que acerta menos.
+     --------------------------------------------------------- */
+
+  // A biblioteca de PDF pesa ~1,5 MB, então só é baixada quando você
+  // realmente escolhe um PDF — e nunca na abertura do app.
+  Fin.carregarPDFjs = function () {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = './vendor/pdf.min.js';
+      s.onload = function () {
+        if (!window.pdfjsLib) { reject(new Error('leitor de PDF não carregou')); return; }
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      };
+      s.onerror = function () { reject(new Error('sem conexão para baixar o leitor de PDF')); };
+      document.head.appendChild(s);
+    });
+  };
+
+  // Junta os pedaços de texto que estão na mesma altura numa "linha".
+  function linhasDaPagina(textContent) {
+    var linhas = [];
+
+    textContent.items.forEach(function (it) {
+      var texto = (it.str || '').trim();
+      if (!texto) return;
+
+      var x = it.transform[4], y = it.transform[5];
+      var linha = null;
+      for (var k = 0; k < linhas.length; k++) {
+        if (Math.abs(linhas[k].y - y) < 3) { linha = linhas[k]; break; }
+      }
+      if (!linha) { linha = { y: y, itens: [] }; linhas.push(linha); }
+      linha.itens.push({ x: x, t: texto });
+    });
+
+    linhas.sort(function (a, b) { return b.y - a.y; });          // de cima para baixo
+    linhas.forEach(function (l) {
+      l.itens.sort(function (a, b) { return a.x - b.x; });        // da esquerda para a direita
+    });
+    return linhas;
+  }
+
+  var RE_DATA_BR  = /^\d{2}\/\d{2}\/\d{4}$/;
+  var RE_VALOR_BB = /^([\d.]+,\d{2})\s*\(([+-])\)$/;
+
+  // Movimentações internas do BB. A conta corrente é varrida para o
+  // Rende Fácil todo dia, então cada lançamento real tem um espelho.
+  // Importar os dois zeraria tudo.
+  var INTERNAS = /rende\s*f[áa]cil|bb\s*rf|saldo\s*anterior|saldo\s*do\s*dia|\bs\s+a\s+l\s+d\s+o\b|total\s*aplica/i;
+
+  // Separa uma linha em data (coluna da esquerda), valor (coluna da
+  // direita) e texto do histórico (coluna do meio).
+  function analisar(linha) {
+    var r = { data: '', valor: '', sinal: '', hist: [] };
+
+    linha.itens.forEach(function (it) {
+      if (!r.data && it.x < 120 && RE_DATA_BR.test(it.t)) { r.data = it.t; return; }
+      var m = it.t.match(RE_VALOR_BB);
+      if (m && it.x > 420) { r.valor = m[1]; r.sinal = m[2]; return; }
+      if (it.x >= 200 && it.x < 500) r.hist.push(it.t);
+    });
+
+    r.hist = r.hist.join(' ').trim();
+    r.ehLancamento = !!(r.data && r.valor);
+    r.soHistorico = !r.data && !r.valor && !!r.hist;
+    return r;
+  }
+
+  // A segunda linha do histórico vem como "dia hora [CPF/CNPJ] NOME".
+  // Ex.: "01/07 18:00 00000000000000 FULANO DE TAL" vira "FULANO DE TAL".
+  function nomeDoDetalhe(texto) {
+    return String(texto || '')
+      .replace(/^\d{2}\/\d{2}\s+\d{2}:\d{2}\s*/, '')   // dia e hora da compra
+      .replace(/^\d{6,20}\s+/, '')                      // CPF/CNPJ do outro lado
+      .trim();
+  }
+
+  function contaDoExtrato(linhas) {
+    var texto = linhas.slice(0, 8).map(function (l) {
+      return l.itens.map(function (i) { return i.t; }).join(' ');
+    }).join(' ');
+
+    var m = texto.match(/Conta:?\s*([\d.\-]+)/i);
+    var digitos = m ? m[1].replace(/\D/g, '') : '';
+    var banco = /banco do brasil|extrato de conta corrente/i.test(texto) ? 'Banco do Brasil' : 'Extrato';
+    return digitos ? banco + ' ••' + digitos.slice(-4) : banco;
+  }
+
+  // Percorre as linhas de todas as páginas montando os lançamentos.
+  //
+  // O BB centraliza o histórico em duas linhas em volta da linha que traz
+  // a data e o valor: a primeira fica ACIMA dela, e a segunda fica na
+  // própria linha ou, quando não cabe, ABAIXO.
+  function montarLancamentos(linhas, rotulo) {
+    var itens = [];
+    var info = linhas.map(analisar);
+
+    info.forEach(function (a, i) {
+      if (!a.ehLancamento) return;
+
+      var acima  = i > 0 ? info[i - 1] : null;
+      var abaixo = i + 1 < info.length ? info[i + 1] : null;
+
+      var tipo = (acima && acima.soHistorico) ? acima.hist : '';
+      var detalhe = a.hist;
+      if (!detalhe && abaixo && abaixo.soHistorico) detalhe = abaixo.hist;
+
+      var completo = (tipo + ' ' + detalhe).trim();
+      if (!completo || INTERNAS.test(completo)) return;
+
+      var v = valor(a.valor);
+      if (isNaN(v) || v === 0) return;
+
+      var d = data(a.data);
+      if (!d) return;
+
+      var nome = nomeDoDetalhe(detalhe);
+      var memo = tipo
+        ? (nome ? tipo + ' · ' + nome : tipo)
+        : (nome || 'Movimentação');
+
+      itens.push({
+        // A chave inclui o texto completo da linha, então reimportar o
+        // mesmo PDF não duplica nada.
+        fitid: chaveSintetica(d, a.sinal === '+' ? v : -v, memo + completo),
+        date: d,
+        amount: Math.abs(v),
+        type: a.sinal === '+' ? 'in' : 'out',
+        memo: memo,
+        conta: rotulo
+      });
+    });
+
+    return itens;
+  }
+
+  // Rede de segurança para bancos de layout desconhecido: qualquer linha
+  // que tenha uma data e um valor vira lançamento, e o resto vira descrição.
+  function modoGenerico(linhas, rotulo) {
+    var itens = [];
+
+    linhas.forEach(function (l) {
+      var texto = l.itens.map(function (i) { return i.t; }).join(' ');
+      var mData = texto.match(/(\d{2}\/\d{2}\/\d{2,4})/);
+      var mValor = texto.match(/(-?\s?R?\$?\s?[\d.]{1,12},\d{2})\s*(\([+-]\))?/);
+      if (!mData || !mValor) return;
+      if (INTERNAS.test(texto)) return;
+
+      var d = data(mData[1]);
+      var v = valor(mValor[1]);
+      if (!d || isNaN(v) || v === 0) return;
+
+      var negativo = /\(-\)/.test(texto) || /-\s?R?\$?\s?[\d.]+,\d{2}/.test(texto) || v < 0;
+      var memo = texto.replace(mData[0], '').replace(mValor[0], '').replace(/\s+/g, ' ').trim();
+
+      itens.push({
+        fitid: chaveSintetica(d, negativo ? -Math.abs(v) : Math.abs(v), memo),
+        date: d,
+        amount: Math.abs(v),
+        type: negativo ? 'out' : 'in',
+        memo: memo || 'Movimentação',
+        conta: rotulo
+      });
+    });
+
+    return itens;
+  }
+
+  Fin.lerPDF = function (buffer) {
+    var pdfjsLib;
+
+    return Fin.carregarPDFjs()
+      .then(function (lib) {
+        pdfjsLib = lib;
+        return pdfjsLib.getDocument({ data: buffer }).promise;
+      })
+      .then(function (pdf) {
+        var linhas = [];
+        var fila = Promise.resolve();
+
+        for (var n = 1; n <= pdf.numPages; n++) {
+          (function (pagina) {
+            fila = fila.then(function () {
+              return pdf.getPage(pagina)
+                .then(function (p) { return p.getTextContent(); })
+                .then(function (tc) { linhas = linhas.concat(linhasDaPagina(tc)); });
+            });
+          })(n);
+        }
+
+        return fila.then(function () {
+          if (!linhas.length) {
+            throw new Error('PDF sem texto — provavelmente é digitalizado');
+          }
+
+          var rotulo = contaDoExtrato(linhas);
+          var itens = montarLancamentos(linhas, rotulo);
+          var modo = 'PDF';
+
+          if (!itens.length) {
+            itens = modoGenerico(linhas, rotulo);
+            modo = 'PDF (genérico)';
+          }
+
+          return { formato: modo, itens: itens };
+        });
+      });
+  };
+
+  /* ---------------------------------------------------------
      Palpite de categoria pelo texto da movimentação
      --------------------------------------------------------- */
 
   var REGRAS_SAIDA = [
     ['Uber',           /\buber|99\s?(app|pop|taxi)|cabify|t[áa]xi/],
     ['Gasolina',       /posto|combust|shell|ipiranga|petrobr|br\s?mania|ale\b|gasolin|etanol/],
-    ['Mercado',        /mercado|supermerc|atacad|carrefour|assa[íi]|p[aã]o de a[çc]|extra\b|big\b|sendas|zaffari|angeloni|hortifr|sacol[aã]o|dia\s?%/],
-    ['Alimentação',    /ifood|rappi|restaurant|lanchon|padaria|pizzar|hamburg|burger|mc\s?donal|bk\b|subway|cafeteri|bar\s?e\s?rest|delivery|food/],
+    ['Mercado',        /mercado|supermerc|atacad|carrefour|assa[íi]|p[aã]o de a[çc]|extra\b|big\b|sendas|zaffari|angeloni|hortifr|sacol[aã]o|dia\s?%|golff|muffato|condor\b|tauste|sonda\b|tenda\b|savegnago/],
+    ['Alimentação',    /ifood|rappi|restaurant|refei[çc][õo]es|lanchon|padaria|pizzar|hamburg|burger|mc\s?donal|bk\b|subway|cafeteri|churrasc|a[çc]a[íi]|bar\s?e\s?rest|delivery|food/],
     ['Assinaturas',    /netflix|spotify|prime\s?video|amazon\s?prime|disney|hbo|max\b|globoplay|deezer|youtube\s?prem|icloud|google\s?one|dropbox|assinatur|mensalidade\s?app/],
-    ['Saúde',          /farm[áa]c|drogar|drogas?il|pacheco|unimed|amil|bradesco\s?sa[úu]|hospital|cl[íi]nic|laborat[óo]r|dentist|psic[óo]log|exame/],
+    ['Saúde',          /farm[áa]c|drogar|drogasil|\braia\d*\b|pacheco|pague\s?menos|panvel|nissei|unimed|amil|bradesco\s?sa[úu]|hospital|cl[íi]nic|laborat[óo]r|dentist|psic[óo]log|exame/],
     ['Contas',         /energia|eletric|cemig|cpfl|light\b|enel|copel|celesc|sabesp|copasa|caesb|[áa]gua\b|g[áa]s\b|comgas|vivo|claro|tim\b|oi\s?fixo|net\s?servi|internet|telefon|boleto|fatura|conta\s?de/],
     ['Moradia',        /aluguel|condom[íi]nio|imobili[áa]r|iptu|reforma|constru|leroy|telha\s?norte/],
     ['Compra virtual', /amazon|mercado\s?livre|mercadolivre|shopee|aliexpress|magalu|magazine\s?luiza|americanas|casas\s?bahia|shein|submarino|kabum|netshoes|pag\s?seguro|paypal/],
     ['Educação',       /escola|col[ée]gio|faculdade|universi|curso|udemy|alura|coursera|mensalidade\s?escolar|material\s?escolar|livraria/],
-    ['Lazer',          /cinema|teatro|show\b|ingresso|park|clube|academia|smart\s?fit|bar\b|pub\b|balada|viagem|hotel|airbnb|booking|passagem|latam|gol\b|azul\b/]
+    ['Lazer',          /cinema|teatro|show\b|ingresso|park|clube|academia|smart\s?fit|bar\b|pub\b|balada|viagem|hotel|airbnb|booking|passagem|latam|gol\b|azul\b|\bgaming\b|\bgames\b|\bsteam\b|playstation|xbox|nintendo|barbearia|sal[ãa]o de beleza/]
   ];
 
   var REGRAS_ENTRADA = [
@@ -313,7 +533,9 @@ window.Fin = window.Fin || {};
     ['Investimentos', /rendiment|juros|dividend|jcp\b|resgate|aplica[çc]|cdb\b|tesouro|poupan[çc]a|renda\s?fixa/],
     ['Freelance',     /freela|servi[çc]o\s?prestado|nota\s?fiscal|honor[áa]r|consultori/],
     ['Reembolso',     /reembols|estorno|devolu[çc]|cashback|ressarc/],
-    ['Vendas',        /venda|recebiment\s?de\s?venda|pix\s?recebido/]
+    // "Pix recebido" de propósito NÃO entra aqui: um Pix recebido pode ser
+    // venda, reembolso ou empréstimo. Melhor deixar você escolher.
+    ['Vendas',        /venda|recebiment\s?de\s?venda/]
   ];
 
   // Sugere uma categoria pelo descritivo. Só devolve nome que exista de
@@ -353,6 +575,19 @@ window.Fin = window.Fin || {};
     var ehOFX = /<OFX>|OFXHEADER|<STMTTRN>/i.test(texto);
     var itens = ehOFX ? Fin.lerOFX(texto) : Fin.lerCSV(texto, nomeArquivo);
     return { formato: ehOFX ? 'OFX' : 'CSV', itens: itens };
+  };
+
+  // Um PDF começa sempre com "%PDF". Checar os bytes é mais confiável do
+  // que confiar na extensão do arquivo.
+  Fin.ehPDF = function (buffer) {
+    var b = new Uint8Array(buffer, 0, Math.min(5, buffer.byteLength));
+    return b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46;
+  };
+
+  // Ponto único de entrada: decide o formato e devolve sempre uma Promise.
+  Fin.lerArquivo = function (buffer, nomeArquivo) {
+    if (Fin.ehPDF(buffer)) return Fin.lerPDF(buffer);
+    return Promise.resolve(Fin.lerExtrato(Fin.decodificar(buffer), nomeArquivo));
   };
 
   // Remove o que já existe (por fitid) e sugere categoria para o resto.

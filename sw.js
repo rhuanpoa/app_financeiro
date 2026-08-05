@@ -4,7 +4,7 @@
    Suba o número da versão sempre que mexer no HTML/CSS/JS.
    ========================================================= */
 
-var VERSAO = 'financas-v5';
+var VERSAO = 'financas-v6';
 
 var ARQUIVOS = [
   './',
@@ -19,6 +19,10 @@ var ARQUIVOS = [
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
+
+// vendor/pdf.min.js e o worker (≈1,5 MB) NÃO entram aqui de propósito:
+// só quem importa um PDF precisa deles. São baixados na primeira
+// importação e ficam no cache pelo `fetch` abaixo.
 
 self.addEventListener('install', function (ev) {
   ev.waitUntil(

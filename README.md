@@ -35,7 +35,8 @@ index.html               estrutura, barra de navegação e menu lateral
 css/style.css            todo o visual
 js/store.js              categorias, localStorage, formatação (R$, datas)
 js/calc.js               cálculos: saldo, previsão, parcelas, categorias, metas
-js/importar.js           leitura de extrato (OFX e CSV) e palpite de categoria
+js/importar.js           leitura de extrato (OFX, CSV, PDF) e palpite de categoria
+vendor/                  pdf.js, baixado só na primeira importação de PDF
 js/screens.js            HTML de cada tela
 js/app.js                estado, navegação e eventos
 manifest.webmanifest     dados para instalar na tela inicial
@@ -94,8 +95,24 @@ extrato* → escolher o arquivo.
   reconhecidas sozinhas, em português ou inglês, inclusive quando crédito e
   débito vêm em colunas separadas. Sem `FITID`, a repetição é detectada por
   data + valor + descrição.
-- **PDF ainda não é suportado**: cada banco usa um layout diferente, então
-  não existe leitura genérica confiável.
+- **PDF** funciona para o **extrato de conta corrente do Banco do Brasil**.
+  A leitura reagrupa o texto do PDF em linhas pela altura e identifica as
+  colunas pela posição horizontal.
+
+### Sobre o PDF do Banco do Brasil
+
+O BB varre o saldo da conta corrente para o **Rende Fácil** todo dia, então
+cada lançamento real aparece espelhado por uma transferência interna e a
+conta fecha em R$ 0,00. Essas linhas (`BB Rende Fácil`, `BB RF Reserva
+Cofrinho`, `Saldo do dia`, `Saldo Anterior`) são descartadas na importação —
+sem isso, todo extrato entraria zerado.
+
+PDF de outros bancos cai num **modo genérico** (qualquer linha com data e
+valor), que não foi testado e pode errar. Confira antes de confirmar. PDF
+digitalizado (imagem) não funciona: não há texto para ler.
+
+A biblioteca de leitura de PDF (`vendor/`, ~1,5 MB) só é baixada quando você
+escolhe um PDF pela primeira vez — ela não pesa na abertura do app.
 
 O que é importado fica numa fila de revisão em *Movimentações* e **não entra no
 saldo até você confirmar**. O arquivo é lido dentro do próprio navegador —

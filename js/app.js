@@ -319,7 +319,7 @@
   function escolherExtrato() {
     var input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.ofx,.qfx,.csv,.txt,text/csv,text/plain';
+    input.accept = '.ofx,.qfx,.csv,.txt,.pdf,text/csv,text/plain,application/pdf';
 
     input.addEventListener('change', function () {
       var arquivo = input.files && input.files[0];
@@ -327,33 +327,39 @@
 
       var leitor = new FileReader();
       leitor.onerror = function () { toast('Não consegui ler o arquivo'); };
+
       leitor.onload = function () {
-        try {
-          var texto = Fin.decodificar(leitor.result);
-          var lido = Fin.lerExtrato(texto, arquivo.name);
+        // PDF exige baixar a biblioteca de leitura, o que demora um pouco
+        // na primeira vez — avisa para não parecer travado.
+        if (Fin.ehPDF(leitor.result)) toast('Lendo o PDF…');
 
-          if (!lido.itens.length) {
-            toast('Não achei movimentações nesse arquivo');
-            return;
-          }
+        Fin.lerArquivo(leitor.result, arquivo.name)
+          .then(function (lido) {
+            if (!lido.itens.length) {
+              toast('Não achei movimentações nesse arquivo');
+              return;
+            }
 
-          var res = Fin.filtrarNovos(lido.itens, dados);
+            var res = Fin.filtrarNovos(lido.itens, dados);
 
-          if (!res.novos.length) {
-            toast(res.repetidos + ' movimentação(ões) já importada(s)');
-            return;
-          }
+            if (!res.novos.length) {
+              toast(res.repetidos + ' movimentação(ões) já importada(s)');
+              return;
+            }
 
-          dados.pendentes = dados.pendentes.concat(res.novos);
-          persistir();
-          irPara('movimentacoes');
-          toast(res.novos.length + ' nova(s) do ' + lido.formato +
-                (res.repetidos ? ' · ' + res.repetidos + ' repetida(s)' : '') + ' ✓');
-        } catch (e) {
-          toast('Arquivo não reconhecido');
-        }
+            dados.pendentes = dados.pendentes.concat(res.novos);
+            persistir();
+            irPara('movimentacoes');
+            toast(res.novos.length + ' nova(s) do ' + lido.formato +
+                  (res.repetidos ? ' · ' + res.repetidos + ' repetida(s)' : '') + ' ✓');
+          })
+          .catch(function (e) {
+            toast(e && e.message ? e.message : 'Arquivo não reconhecido');
+          });
       };
-      // ArrayBuffer, não texto: o encoding é decidido depois, olhando os bytes.
+
+      // ArrayBuffer, não texto: o formato e o encoding são decididos
+      // depois, olhando os bytes.
       leitor.readAsArrayBuffer(arquivo);
     });
 

@@ -1,0 +1,20 @@
+# Extratos bancários NUNCA entram no repositório.
+# Ele é público: um extrato commitado fica exposto para sempre, com nome,
+# agência, conta e o nome de quem te pagou — e continua no histórico do
+# git mesmo depois de apagado.
+*.pdf
+*.ofx
+*.qfx
+*.csv
+*.xls
+*.xlsx
+
+# Backups do próprio app (contêm todos os seus lançamentos)
+financas-*.json
+
+# Arquivos temporários de teste
+__*.html
+
+# Sistema
+Thumbs.db
+.DS_Store

@@ -568,8 +568,9 @@ window.Fin = window.Fin || {};
         s: 'O melhor formato. Traz um código único por transação, então dá para reimportar o mesmo extrato sem duplicar nada.' },
       { tag: 'CSV', ok: true, t: 'CSV / planilha',
         s: 'Reconhece as colunas de data, descrição e valor sozinho, inclusive quando crédito e débito vêm separados.' },
-      { tag: 'PDF', ok: false, t: 'PDF — ainda não',
-        s: 'Cada banco usa um layout diferente de PDF. Procure por “exportar OFX” ou “exportar CSV” no app do seu banco.' }
+      { tag: 'PDF', ok: true, t: 'PDF do Banco do Brasil',
+        s: 'Extrato de conta corrente do BB, já ignorando as transferências internas do Rende Fácil. ' +
+           'PDF de outros bancos é tentado no modo genérico, que pode errar — confira antes de confirmar.' }
     ];
 
     return '<div class="screen">' +
@@ -581,7 +582,7 @@ window.Fin = window.Fin || {};
              '<button class="dropzone" data-action="escolher-extrato" type="button">' +
                '<div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 20h16"/></svg></div>' +
                '<div class="t">Escolher arquivo</div>' +
-               '<div class="s">Baixe o extrato no app do banco e selecione aqui</div>' +
+               '<div class="s">OFX, CSV ou PDF — baixe no app do banco e selecione aqui</div>' +
              '</button>' +
 
              '<div class="formatos">' +
