@@ -4,7 +4,8 @@
    Suba o número da versão sempre que mexer no HTML/CSS/JS.
    ========================================================= */
 
-var VERSAO = 'financas-v9';
+// Mantenha igual a Fin.VERSAO em js/store.js e a "versao" em version.json.
+var VERSAO = 'financas-v10';
 
 var ARQUIVOS = [
   './',
@@ -47,6 +48,14 @@ self.addEventListener('activate', function (ev) {
 self.addEventListener('fetch', function (ev) {
   var req = ev.request;
   if (req.method !== 'GET') return;
+
+  // version.json nunca pode vir do cache: é justamente ele que diz qual
+  // versão está publicada. Cacheado, o app responderia "está atualizado"
+  // para sempre.
+  if (req.url.indexOf('version.json') !== -1) {
+    ev.respondWith(fetch(req, { cache: 'no-store' }));
+    return;
+  }
 
   // Navegação: tenta a rede primeiro, para pegar versões novas do app.
   if (req.mode === 'navigate') {

@@ -1030,11 +1030,72 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
 }
 
 .drawer-foot {
-  padding: 14px 22px calc(20px + var(--safe-bottom));
+  padding: 14px 18px calc(18px + var(--safe-bottom));
+  flex: none;
+  border-top: 1px solid var(--line);
+  margin-top: 6px;
+}
+
+.versao-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.versao-linha b { color: var(--ink); font-weight: 700; }
+
+.versao-linha button {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--deep);
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: #eef1ea;
+  flex: none;
+}
+
+.versao-linha button[disabled] { opacity: .55; }
+
+.versao-status {
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 9px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.versao-status[hidden] { display: none; }
+
+/* Em dia */
+.versao-status.ok { background: #e5f2ea; color: #146a45; }
+/* Existe versão nova */
+.versao-status.nova { background: #fdf6ec; color: #7a6a4a; }
+/* Não deu para verificar */
+.versao-status.erro { background: #faece7; color: var(--red); }
+
+.versao-status button {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--deep);
+  color: var(--on-deep);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.drawer-nota {
   font-size: 11px;
   color: var(--faint);
   line-height: 1.5;
-  flex: none;
+  margin-top: 12px;
 }
 
 /* ---------------------------------------------------------

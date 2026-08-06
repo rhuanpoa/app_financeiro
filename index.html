@@ -118,7 +118,14 @@
     </button>
   </nav>
 
-  <div class="drawer-foot">Seus dados ficam salvos só neste aparelho.</div>
+  <div class="drawer-foot">
+    <div class="versao-linha">
+      <span>Versão <b id="versao-app">—</b></span>
+      <button id="btn-atualizar" data-action="buscar-atualizacao" type="button">Buscar atualização</button>
+    </div>
+    <div id="versao-status" class="versao-status" hidden></div>
+    <div class="drawer-nota">Seus dados ficam salvos só neste aparelho.</div>
+  </div>
 </aside>
 
 <script src="./js/store.js"></script>

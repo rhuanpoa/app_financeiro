@@ -92,14 +92,24 @@ Depois disso ele abre em tela cheia, sem a barra do navegador, e funciona offlin
 
 ## Depois de atualizar o app
 
-O service worker guarda os arquivos em cache. Ao publicar uma mudança, aumente a
-versão em `sw.js`:
+O service worker guarda os arquivos em cache, então o celular pode continuar
+abrindo a versão antiga. Ao publicar, suba o número da versão nos **três**
+lugares — eles precisam ficar iguais:
 
-```js
-var VERSAO = 'financas-v2';   // era v1
-```
+| Arquivo | O que é |
+|---|---|
+| `js/store.js` → `Fin.VERSAO` | a versão que está rodando no aparelho |
+| `version.json` → `versao` | a versão publicada, que o app consulta |
+| `sw.js` → `VERSAO` | o nome do cache; muda para o celular baixar de novo |
 
-Sem isso o celular pode continuar abrindo a versão antiga.
+No app, **Menu → rodapé** mostra a versão instalada e tem o botão **Buscar
+atualização**, que compara com o `version.json` do servidor. Se estiverem
+diferentes, aparece *Atualizar agora*, que limpa o cache e recarrega — os
+dados no aparelho não são tocados.
+
+⚠️ O GitHub Pages leva de um a alguns minutos para publicar depois do `push`.
+Se o app disser que há versão nova e ela não chegar, o Pages ainda está
+construindo.
 
 ## Importar extrato
 

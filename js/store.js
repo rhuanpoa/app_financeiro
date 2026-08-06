@@ -10,6 +10,15 @@ window.Fin = window.Fin || {};
 
   var CHAVE = 'fin_v1';
 
+  /* Versão do app que está rodando neste aparelho.
+     Ao publicar uma versão nova, este número precisa mudar em TRÊS lugares:
+       1. aqui (é o que o app mostra e compara)
+       2. version.json (é o que o app busca no servidor para comparar)
+       3. VERSAO em sw.js (troca o cache, senão o celular abre o antigo)
+     O botão "Buscar atualização" no menu existe justamente para flagrar
+     quando um deles ficou para trás. */
+  Fin.VERSAO = 'v10';
+
   Fin.CATS = [
     { name: 'Alimentação',    color: '#d9822b' },
     { name: 'Mercado',        color: '#2f9e6f' },

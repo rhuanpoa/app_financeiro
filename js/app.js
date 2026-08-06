@@ -490,6 +490,91 @@
   }
 
   /* ---------------------------------------------------------
+     Versão e atualização
+
+     O app guarda offline, então o celular pode continuar rodando uma
+     versão antiga sem avisar. Aqui ele compara a versão que está
+     carregada com a que está publicada no GitHub Pages.
+     --------------------------------------------------------- */
+
+  function mostrarStatusVersao(classe, texto, botao) {
+    var el = document.getElementById('versao-status');
+    el.className = 'versao-status ' + classe;
+    el.innerHTML = texto + (botao
+      ? '<button data-action="aplicar-atualizacao" type="button">' + botao + '</button>'
+      : '');
+    el.hidden = false;
+  }
+
+  function buscarAtualizacao() {
+    var btn = document.getElementById('btn-atualizar');
+    btn.disabled = true;
+    btn.textContent = 'Verificando…';
+
+    var terminar = function () {
+      btn.disabled = false;
+      btn.textContent = 'Buscar atualização';
+    };
+
+    // Cache-buster na URL além do no-store: alguns proxies ignoram o
+    // cabeçalho, mas nenhum ignora uma URL diferente.
+    fetch('./version.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (info) {
+        var publicada = String(info.versao || '').trim();
+        var instalada = Fin.VERSAO;
+
+        if (!publicada) throw new Error('resposta sem versão');
+
+        if (publicada === instalada) {
+          mostrarStatusVersao('ok',
+            'Você está na versão mais recente (<b>' + Fin.esc(publicada) + '</b>).');
+        } else {
+          mostrarStatusVersao('nova',
+            'Há uma versão nova no servidor: <b>' + Fin.esc(publicada) + '</b>.<br>' +
+            'Você está na <b>' + Fin.esc(instalada) + '</b>.',
+            'Atualizar agora');
+        }
+        terminar();
+      })
+      .catch(function (e) {
+        mostrarStatusVersao('erro',
+          'Não consegui verificar. Sem internet? (' + Fin.esc(e.message) + ')');
+        terminar();
+      });
+  }
+
+  // Limpa o cache do service worker e recarrega, para o aparelho pegar
+  // os arquivos novos. Os dados ficam no localStorage e não são tocados.
+  function aplicarAtualizacao() {
+    mostrarStatusVersao('nova', 'Baixando a versão nova…');
+
+    var tarefas = [];
+
+    if (window.caches) {
+      tarefas.push(caches.keys().then(function (chaves) {
+        return Promise.all(chaves.map(function (k) { return caches.delete(k); }));
+      }));
+    }
+
+    if (navigator.serviceWorker) {
+      tarefas.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+        return Promise.all(regs.map(function (r) { return r.unregister(); }));
+      }));
+    }
+
+    Promise.all(tarefas)
+      .catch(function () { /* mesmo falhando, vale tentar recarregar */ })
+      .then(function () {
+        // A query nova evita que o próprio navegador sirva o HTML do cache.
+        location.replace(location.pathname + '?atualizado=' + Date.now());
+      });
+  }
+
+  /* ---------------------------------------------------------
      Eventos — um só ouvinte para tudo (delegação)
      --------------------------------------------------------- */
 
@@ -587,6 +672,9 @@
 
       case 'abrir-menu': abrirMenu(); break;
       case 'fechar-menu': fecharMenu(); break;
+
+      case 'buscar-atualizacao':  buscarAtualizacao(); break;
+      case 'aplicar-atualizacao': aplicarAtualizacao(); break;
 
       case 'escolher-extrato':     escolherExtrato(); break;
       case 'confirmar-pendentes':  confirmarPendentes(); break;
@@ -703,6 +791,8 @@
   /* ---------------------------------------------------------
      Início
      --------------------------------------------------------- */
+
+  document.getElementById('versao-app').textContent = Fin.VERSAO;
 
   var telaInicial = (location.hash || '').replace('#', '');
   // "mais" era a tela antiga de atalhos, hoje substituída pelo menu lateral.
