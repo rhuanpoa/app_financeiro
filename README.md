@@ -3,22 +3,38 @@
 App de controle de finanças pessoais para usar no celular. Roda direto no navegador,
 sem servidor e sem cadastro — os dados ficam salvos no próprio aparelho.
 
-## O que tem
+## As telas
 
-- **Saldo** com entradas e saídas do mês
-- **Lançamentos** de saída/entrada com categoria, data e a opção "repete todo mês"
-- **Importar extrato do banco** em OFX ou CSV, com categoria sugerida
-  automaticamente e revisão antes de entrar no caixa
-- **Movimentações**: o que veio do extrato, com filtro por conta
-- **Gráficos por categoria** no Início (mês corrente) e em Movimentações
-  (todos os lançamentos), ordenados do maior para o menor
-- **Compras parceladas** com acompanhamento de quantas parcelas já foram pagas
-- **Previsão de 12 meses** (entradas fixas − gastos fixos − parcelas − média de gastos variáveis)
-- **Histórico** agrupado por mês
-- **Categorias**: totais por categoria (saídas e entradas) e criação de
-  categorias próprias, com cor à escolha
-- **Metas de economia**
-- **Backup**: exportar/restaurar um arquivo `.json`
+1. **Início** — o painel do mês: saldo, seletor de mês, os quatro números
+   (entradas e saídas, já realizadas e programadas), sobra prevista, gráficos
+   por categoria e as metas.
+2. **Previsão** — projeção de 12 meses. Cada mês abre e mostra o que há dentro
+   dele: entradas fixas, gastos fixos, parcelas e a média de variáveis.
+3. **Novo lançamento** — saída ou entrada, com categoria, data e "repete todo mês".
+4. **Movimentações** — gráficos por categoria e importação de extrato.
+5. **Histórico** — todos os lançamentos, agrupados por mês.
+6. **Categorias** — totais por categoria e criação de categorias próprias.
+7. **Metas** — criar, editar, guardar e retirar valor.
+8. **Parcelas** — compras no cartão e quanto falta pagar.
+
+Mais: **importação de extrato** em OFX, CSV e PDF do Banco do Brasil, e
+**backup** exportar/restaurar em `.json`.
+
+## Já feito × programado
+
+O painel do Início separa o que aconteceu do que ainda vai acontecer:
+
+- **já feito** — lançamentos do mês com data até hoje;
+- **programado** — lançamentos com data futura dentro do mês, mais os
+  marcados "repete todo mês" que ainda não apareceram nele, mais as parcelas
+  que vencem no mês.
+
+Num mês passado nada fica programado; num mês futuro nada está feito.
+
+Um "repete todo mês" vale **uma vez por mês**, não uma vez por registro: dois
+lançamentos com o mesmo tipo, categoria e descrição são o mesmo compromisso, e
+vale o mais recente. Sem isso, marcar o salário como fixo em dois meses faria
+o app achar que a renda dobrou — e a previsão crescia sozinha a cada mês de uso.
 
 ## Navegação
 

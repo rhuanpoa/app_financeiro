@@ -121,6 +121,8 @@ window.Fin = window.Fin || {};
       parcela: { description: '', total: '', parcels: '', dueDay: '',
                  firstDue: hoje.slice(0, 7), card: '', category: '' },
       goal:    { name: '', target: '', saved: '' },
+      // meta em edição: os três campos + o valor a guardar/retirar
+      goalEdit: { name: '', target: '', saved: '', valor: '' },
       categoria: { name: '', color: Fin.PALETA[0], type: 'out' }
     };
   };

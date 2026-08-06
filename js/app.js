@@ -23,6 +23,12 @@
     screen: 'dash',
     addType: 'out',
     contaFiltro: '',
+    // Mês que o painel inicial mostra. null = o mês corrente.
+    mesRef: null,
+    // Mês aberto na tela de Previsão (índice absoluto), ou null.
+    mesAberto: null,
+    // Meta sendo editada
+    metaEditId: null,
     forms: Fin.formsEmBranco()
   };
 
@@ -33,7 +39,7 @@
     proj: 'proj',
     hist: 'hist',
     categorias: 'categorias', categoriaAdd: 'categorias',
-    metas: 'metas', metaAdd: 'metas',
+    metas: 'metas', metaAdd: 'metas', metaEdit: 'metas',
     parcelas: 'parcelas', parcelaAdd: 'parcelas'
   };
 
@@ -49,13 +55,21 @@
      Renderização
      --------------------------------------------------------- */
 
-  function render() {
-    var calculado = Fin.calcular(dados, estado.contaFiltro);
+  // `preservarScroll` para ações que mudam algo no meio da página (abrir um
+  // mês, trocar o filtro): saltar para o topo faria perder o lugar.
+  function render(preservarScroll) {
+    var posicao = window.scrollY;
+    var calculado = Fin.calcular(dados, estado.contaFiltro, estado.mesRef);
     var tela = Fin.telas[estado.screen] || Fin.telas.dash;
 
     view.innerHTML = tela(calculado, estado);
-    view.scrollTop = 0;
-    window.scrollTo(0, 0);
+
+    if (preservarScroll) {
+      window.scrollTo(0, posicao);
+    } else {
+      view.scrollTop = 0;
+      window.scrollTo(0, 0);
+    }
 
     var aba = ABA_DA_TELA[estado.screen];
     tabbar.querySelectorAll('.tab').forEach(function (b) {
@@ -244,6 +258,74 @@
     persistir();
     render();
     toast('Categoria apagada');
+  }
+
+  function abrirEdicaoDeMeta(id) {
+    var g = dados.goals.find(function (x) { return x.id === id; });
+    if (!g) return;
+
+    estado.metaEditId = id;
+    // Valores vão para o formulário com vírgula, como o app escreve.
+    estado.forms.goalEdit = {
+      name: g.name,
+      target: String(g.target).replace('.', ','),
+      saved: String(g.saved).replace('.', ','),
+      valor: ''
+    };
+    irPara('metaEdit');
+  }
+
+  function salvarEdicaoDeMeta() {
+    var f = estado.forms.goalEdit;
+    var nome = (f.name || '').trim();
+    var alvo = Fin.parse(f.target);
+
+    if (!nome) { toast('Dê um nome à meta'); return; }
+    if (!alvo) { toast('Informe o objetivo'); return; }
+
+    var guardado = Math.max(0, Fin.parse(f.saved));
+
+    dados.goals = dados.goals.map(function (g) {
+      return g.id === estado.metaEditId
+        ? Object.assign({}, g, { name: nome, target: alvo, saved: guardado })
+        : g;
+    });
+
+    persistir();
+    irPara('metas');
+    toast('Meta atualizada ✓');
+  }
+
+  // sinal = +1 para guardar, -1 para retirar
+  function movimentarMeta(sinal) {
+    var f = estado.forms.goalEdit;
+    var valor = Fin.parse(f.valor);
+
+    if (!valor || valor <= 0) { toast('Informe quanto quer movimentar'); return; }
+
+    var g = dados.goals.find(function (x) { return x.id === estado.metaEditId; });
+    if (!g) return;
+
+    // Não deixa o guardado ficar negativo nem passar do objetivo.
+    var novo = Math.min(g.target, Math.max(0, g.saved + sinal * valor));
+    var mudou = novo - g.saved;
+
+    if (!mudou) {
+      toast(sinal > 0 ? 'A meta já está completa' : 'Não há saldo para retirar');
+      return;
+    }
+
+    dados.goals = dados.goals.map(function (x) {
+      return x.id === g.id ? Object.assign({}, x, { saved: novo }) : x;
+    });
+
+    // O formulário reflete o novo saldo e limpa o campo de movimento.
+    estado.forms.goalEdit.saved = String(novo).replace('.', ',');
+    estado.forms.goalEdit.valor = '';
+
+    persistir();
+    render();
+    toast((sinal > 0 ? 'Guardado ' : 'Retirado ') + Fin.fmt(Math.abs(mudou)) + ' ✓');
   }
 
   function guardarNaMeta(id, valor) {
@@ -485,11 +567,23 @@
 
       case 'del-tx':      apagar('tx', id, 'Removido'); break;
       case 'del-parcela': apagar('parcelas', id, 'Compra removida'); break;
-      case 'del-meta':    apagar('goals', id, 'Meta removida'); break;
+      case 'del-meta':
+        if (!confirm('Apagar esta meta? O valor guardado nela some do registro.')) break;
+        dados.goals = dados.goals.filter(function (g) { return g.id !== id; });
+        persistir();
+        // Se a meta apagada era a que estava aberta, não dá para ficar nela.
+        if (estado.screen === 'metaEdit') irPara('metas'); else render();
+        toast('Meta removida');
+        break;
 
       case 'goal-add':
         guardarNaMeta(id, Number(alvo.dataset.amount));
         break;
+
+      case 'editar-meta':      abrirEdicaoDeMeta(id); break;
+      case 'salvar-meta-edit': salvarEdicaoDeMeta(); break;
+      case 'meta-guardar':     movimentarMeta(1); break;
+      case 'meta-retirar':     movimentarMeta(-1); break;
 
       case 'abrir-menu': abrirMenu(); break;
       case 'fechar-menu': fecharMenu(); break;
@@ -501,8 +595,26 @@
 
       case 'filtrar-conta':
         estado.contaFiltro = alvo.dataset.conta || '';
-        render();
+        render(true);
         break;
+
+      // Navegação de mês no painel inicial. Guarda o índice absoluto do
+      // mês (ano*12+mês), que faz a virada de dezembro sozinha.
+      case 'mes-anterior':
+      case 'mes-seguinte': {
+        var atual = estado.mesRef === null ? Fin.indiceMes(new Date()) : estado.mesRef;
+        estado.mesRef = atual + (acao === 'mes-seguinte' ? 1 : -1);
+        render(true);
+        break;
+      }
+
+      // Abre ou fecha o detalhe de um mês na Previsão
+      case 'abrir-mes': {
+        var ym = Number(alvo.dataset.ym);
+        estado.mesAberto = estado.mesAberto === ym ? null : ym;
+        render(true);
+        break;
+      }
 
       case 'exportar': exportar(); break;
       case 'importar-backup': importar(); break;

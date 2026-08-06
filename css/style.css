@@ -402,7 +402,87 @@ svg { display: block; }
   line-height: 1.5;
 }
 
-.proj-row .l { font-size: 14px; font-weight: 700; }
+/* Cabeçalho clicável do mês na Previsão */
+.proj-cab { display: block; width: 100%; }
+
+.proj-row .l {
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.proj-seta {
+  width: 15px;
+  height: 15px;
+  color: var(--faint);
+  transition: transform .18s ease;
+}
+
+.proj-row.aberto .proj-seta { transform: rotate(180deg); }
+
+/* O que há dentro do mês */
+.proj-detalhe {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.proj-detalhe-t {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.proj-bloco + .proj-bloco { margin-top: 14px; }
+
+.proj-bloco-t {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+
+.proj-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 0;
+  min-width: 0;
+}
+
+.proj-item i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  display: block;
+}
+
+.proj-item .n {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proj-item .n em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.proj-item .v { font-size: 13px; font-weight: 600; flex: none; }
+.proj-item .v.in  { color: var(--green); }
+.proj-item .v.out { color: var(--red); }
 .proj-row .v { font-size: 16px; font-weight: 600; }
 .proj-row .v.negative { color: var(--red); }
 
@@ -734,6 +814,35 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
   font-weight: 700;
 }
 
+.goal-editar {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-top: 10px;
+  padding: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* Guardar / retirar valor livre */
+.btn-mov {
+  flex: 1;
+  text-align: center;
+  padding: 15px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.btn-mov.guardar { background: var(--deep); color: var(--on-deep); }
+
+.btn-mov.retirar {
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  color: var(--red);
+}
+
 /* ---------------------------------------------------------
    Barra de navegação
    --------------------------------------------------------- */
@@ -927,6 +1036,107 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
   line-height: 1.5;
   flex: none;
 }
+
+/* ---------------------------------------------------------
+   Seletor de mês — comanda tudo que vem abaixo dele
+   --------------------------------------------------------- */
+
+.mes-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 14px;
+}
+
+.mes-nav button {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: var(--ink);
+}
+
+.mes-nav button svg { width: 18px; height: 18px; }
+
+.mes-nav button[disabled] {
+  opacity: .35;
+  cursor: default;
+}
+
+.mes-nome {
+  flex: 1;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  min-width: 0;
+  /* sem text-transform: o nome já vem certo, e "capitalize"
+     transformaria "Ago de 2026" em "Ago De 2026" */
+}
+
+.mes-hoje {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: .02em;
+  margin-top: 1px;
+}
+
+/* ---------------------------------------------------------
+   Os quatro números do mês
+   --------------------------------------------------------- */
+
+.kpis { display: flex; gap: 11px; }
+
+.kpi {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 15px;
+}
+
+.kpi-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.kpi-tag.in  { color: var(--green); }
+.kpi-tag.out { color: var(--red); }
+
+.kpi-linha {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 9px;
+}
+
+.kpi-linha span {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.kpi-linha b {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Só o valor já realizado ganha cor; o programado fica em tinta
+   neutra, porque ainda não aconteceu. */
+.kpi-linha b.in  { color: var(--green); }
+.kpi-linha b.out { color: var(--red); }
 
 /* ---------------------------------------------------------
    Gráfico de categorias

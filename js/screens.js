@@ -155,78 +155,79 @@ window.Fin = window.Fin || {};
     h += '<div class="balance-card">' +
            '<div class="balance-label">Saldo atual</div>' +
            '<div class="balance-value mono' + (v.saldoNegativo ? ' negative' : '') + '">' + v.saldoFmt + '</div>' +
-           '<div class="balance-split">' +
-             '<div><div class="k">Entradas do mês</div><div class="v in mono">' + v.entradasMesFmt + '</div></div>' +
-             '<div><div class="k">Saídas do mês</div><div class="v out mono">' + v.saidasMesFmt + '</div></div>' +
+         '</div>';
+
+    /* ---- seletor de mês: manda em tudo que vem abaixo ---- */
+    var r = v.resumoMes;
+
+    h += '<div class="mes-nav">' +
+           '<button data-action="mes-anterior" type="button" aria-label="Mês anterior">' +
+             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>' +
+           '</button>' +
+           '<div class="mes-nome">' + v.mesLabel +
+             (v.ehMesAtual ? '<span class="mes-hoje">mês atual</span>' : '') +
+           '</div>' +
+           '<button data-action="mes-seguinte" type="button" aria-label="Próximo mês"' +
+             (v.podeAvancar ? '' : ' disabled') + '>' +
+             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>' +
+           '</button>' +
+         '</div>';
+
+    /* ---- os quatro números do mês ---- */
+    h += '<div class="kpis">' +
+           '<div class="kpi">' +
+             '<div class="kpi-tag in">Entradas</div>' +
+             '<div class="kpi-linha"><span>já recebido</span><b class="mono in">' + r.feitoInFmt + '</b></div>' +
+             '<div class="kpi-linha"><span>programado</span><b class="mono">' + r.progInFmt + '</b></div>' +
+           '</div>' +
+           '<div class="kpi">' +
+             '<div class="kpi-tag out">Saídas</div>' +
+             '<div class="kpi-linha"><span>já gasto</span><b class="mono out">' + r.feitoOutFmt + '</b></div>' +
+             '<div class="kpi-linha"><span>programado</span><b class="mono">' + r.progOutFmt + '</b></div>' +
            '</div>' +
          '</div>';
 
-    h += '<div class="quick">' +
-           '<button data-action="add-out" type="button">' +
-             '<div class="bubble out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 19V5M5 12l7 7 7-7"/></svg></div>' +
-             '<div><div class="t">Saída</div><div class="s">Registrar gasto</div></div>' +
-           '</button>' +
-           '<button data-action="add-in" type="button">' +
-             '<div class="bubble in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12l7-7 7 7"/></svg></div>' +
-             '<div><div class="t">Entrada</div><div class="s">Registrar receita</div></div>' +
-           '</button>' +
+    h += '<div class="card" style="margin-top:12px;border-radius:16px;padding:14px 16px">' +
+           '<div class="between">' +
+             '<div style="font-size:13px;font-weight:700">Sobra prevista do mês</div>' +
+             '<div class="mono" style="font-size:17px;font-weight:600;color:' +
+               (r.previstoNegativo ? 'var(--red)' : 'var(--green)') + '">' + r.previstoFmt + '</div>' +
+           '</div>' +
+           (r.temParcelas
+             ? '<div style="font-size:11px;color:var(--muted);margin-top:6px">Inclui ' +
+               r.parcelasFmt + ' de parcelas do mês.</div>'
+             : '') +
          '</div>';
 
-    if (v.temParcelas) {
-      h += '<button class="card tap" style="margin-top:16px" data-nav="parcelas" type="button">' +
-             '<div class="between">' +
-               '<div>' +
-                 '<div style="font-size:13px;font-weight:700">Parcelas deste mês</div>' +
-                 '<div style="font-size:12px;color:var(--muted);margin-top:2px">' + v.qtdParcelas + ' compra(s) parcelada(s)</div>' +
-               '</div>' +
-               '<div class="mono" style="font-size:17px;font-weight:600;color:var(--red)">' + v.parcelasMesFmt + '</div>' +
-             '</div>' +
-           '</button>';
+    if (!r.temAlgo) {
+      h += '<div style="margin-top:16px">' +
+             vazio('Nada neste mês',
+               'Use o <b>+</b> para registrar uma saída ou entrada, ou traga o extrato do banco em <b>Movimentações</b>.') +
+           '</div>';
     }
 
-    h += '<button class="card lg tap" style="margin-top:16px" data-nav="proj" type="button">' +
-           '<div class="between">' +
-             '<div style="font-size:13px;font-weight:700">Previsão · 12 meses</div>' +
-             '<div style="font-size:11px;color:var(--muted);font-weight:600">ver detalhes ›</div>' +
-           '</div>' +
-           '<div class="mono" style="font-size:24px;font-weight:600;letter-spacing:-.02em;margin-top:6px;color:' +
-             (v.previsao.total < 0 ? 'var(--red)' : 'var(--deep)') + '">' + Fin.fmt(v.previsao.total) + '</div>' +
-           '<div class="chart">' +
-             v.previsao.barras.map(function (b) {
-               return '<i style="height:' + b.alturaPct + '%;background:' + b.suave + '"></i>';
-             }).join('') +
-           '</div>' +
-         '</button>';
-
+    /* ---- gráficos do mês escolhido ---- */
     if (v.mesSaida.temDados || v.mesEntrada.temDados) {
-      h += '<div class="section-title">Por categoria · ' + v.nomeDoMes + '</div>';
+      h += '<div class="section-title">Por categoria · ' + v.mesCurto + '</div>';
       h += graficoCategorias('Onde o dinheiro saiu', v.mesSaida, { esconderVazio: true });
       h += graficoCategorias('De onde o dinheiro veio', v.mesEntrada, { esconderVazio: true });
     }
 
-    h += '<div class="section-bar">' +
-           '<div style="font-size:15px;font-weight:800">Últimos lançamentos</div>' +
-           (v.temTx ? '<button class="link" data-nav="hist" type="button">Ver tudo</button>' : '') +
-         '</div>';
-
-    if (v.temTx) {
-      h += '<div class="stack tight">' +
-             v.recentes.map(function (t) { return linhaTx(t, false); }).join('') +
-           '</div>';
-    } else {
-      h += vazio('Nada registrado ainda',
-        'Toque em <b>Saída</b> ou <b>Entrada</b> acima para começar a controlar seu dinheiro.');
-    }
-
+    /* ---- metas ---- */
     if (v.temMetas) {
-      h += '<div class="section-title">Metas</div><div class="stack">' +
+      h += '<div class="section-bar">' +
+             '<div style="font-size:15px;font-weight:800">Metas</div>' +
+             '<button class="link" data-nav="metas" type="button">Ver todas</button>' +
+           '</div>' +
+           '<div class="stack">' +
              v.metas.map(function (g) {
-               return '<div class="card" style="border-radius:16px;padding:14px 16px">' +
+               return '<button class="card tap" style="border-radius:16px;padding:14px 16px" ' +
+                        'data-nav="metas" type="button">' +
                         '<div class="between">' +
                           '<div style="font-size:14px;font-weight:700">' + esc(g.name) + '</div>' +
                           '<div class="mono" style="font-size:12px;color:var(--muted)">' + g.savedFmt + ' / ' + g.targetFmt + '</div>' +
                         '</div>' + barra(g.pct) +
-                      '</div>';
+                      '</button>';
              }).join('') +
            '</div>';
     }
@@ -387,7 +388,7 @@ window.Fin = window.Fin || {};
      Previsão
      ========================================================= */
 
-  Fin.telas.proj = function (v) {
+  Fin.telas.proj = function (v, estado) {
     var p = v.previsao;
     var h = '<div class="screen">';
 
@@ -410,20 +411,67 @@ window.Fin = window.Fin || {};
     h += '<div class="proj-note">Cálculo por mês: <b>entradas fixas</b> − gastos fixos − parcelas do mês − ' +
          'média de gastos variáveis (' + Fin.fmt(p.mediaVar) + '/mês).</div>';
 
-    h += '<div class="section-title">Mês a mês</div><div class="stack">' +
+    // Uma lista do que compõe o mês (entradas fixas, gastos fixos, parcelas)
+    function comporLinhas(titulo, itens, tipo) {
+      if (!itens.length) return '';
+      return '<div class="proj-bloco">' +
+               '<div class="proj-bloco-t">' + titulo + '</div>' +
+               itens.map(function (i) {
+                 return '<div class="proj-item">' +
+                          '<i style="background:' + i.cor + '"></i>' +
+                          '<span class="n">' + esc(i.nome) +
+                            (i.posicao ? ' <em>' + i.posicao + '</em>' : '') +
+                          '</span>' +
+                          '<span class="v mono ' + tipo + '">' + i.valorFmt + '</span>' +
+                        '</div>';
+               }).join('') +
+             '</div>';
+    }
+
+    h += '<div class="section-title">Mês a mês</div>' +
+         '<div class="hint" style="text-align:left;margin:-6px 2px 12px">Toque num mês para ver o que há dentro dele.</div>' +
+         '<div class="stack">' +
       p.detalhe.map(function (d) {
-        return '<div class="card proj-row" style="border-radius:16px;padding:14px 16px">' +
-                 '<div class="between">' +
-                   '<div class="l">' + d.label + '</div>' +
-                   '<div class="v mono' + (d.negative ? ' negative' : '') + '">' + d.balanceFmt + '</div>' +
-                 '</div>' +
-                 '<div class="proj-tags">' +
-                   '<span class="in">' + d.incomeFmt + ' entra</span>' +
-                   '<span class="out">' + d.fixedFmt + ' fixo</span>' +
-                   '<span class="out">' + d.instFmt + ' parcelas</span>' +
-                   '<span class="out">' + d.varFmt + ' variável</span>' +
-                 '</div>' +
-               '</div>';
+        var aberto = estado && estado.mesAberto === d.ym;
+
+        var corpo = '<div class="card proj-row' + (aberto ? ' aberto' : '') +
+                      '" style="border-radius:16px;padding:14px 16px">' +
+                      '<button class="proj-cab" data-action="abrir-mes" data-ym="' + d.ym + '" type="button">' +
+                        '<div class="between">' +
+                          '<div class="l">' + d.label +
+                            '<svg class="proj-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>' +
+                          '</div>' +
+                          '<div class="v mono' + (d.negative ? ' negative' : '') + '">' + d.balanceFmt + '</div>' +
+                        '</div>' +
+                        '<div class="proj-tags">' +
+                          '<span class="in">' + d.incomeFmt + ' entra</span>' +
+                          '<span class="out">' + d.fixedFmt + ' fixo</span>' +
+                          '<span class="out">' + d.instFmt + ' parcelas</span>' +
+                          '<span class="out">' + d.varFmt + ' variável</span>' +
+                        '</div>' +
+                      '</button>';
+
+        if (aberto) {
+          var dentro =
+            comporLinhas('Entradas fixas', d.entradasFixas, 'in') +
+            comporLinhas('Gastos fixos', d.saidasFixas, 'out') +
+            comporLinhas('Parcelas', d.parcelas, 'out') +
+            '<div class="proj-bloco">' +
+              '<div class="proj-bloco-t">Gastos variáveis</div>' +
+              '<div class="proj-item">' +
+                '<i style="background:#c9ccc0"></i>' +
+                '<span class="n">Média dos seus meses</span>' +
+                '<span class="v mono out">' + d.mediaVarFmt + '</span>' +
+              '</div>' +
+            '</div>';
+
+          corpo += '<div class="proj-detalhe">' +
+                     '<div class="proj-detalhe-t">O que compõe ' + d.labelLongo + '</div>' +
+                     dentro +
+                   '</div>';
+        }
+
+        return corpo + '</div>';
       }).join('') + '</div>';
 
     if (p.semDados) {
@@ -582,8 +630,67 @@ window.Fin = window.Fin || {};
                    return '<button type="button" data-action="goal-add" data-id="' + g.id + '" data-amount="' + n + '">+ R$' + n + '</button>';
                  }).join('') +
                '</div>' +
+               '<button class="goal-editar" data-action="editar-meta" data-id="' + g.id + '" type="button">' +
+                 'Editar, guardar ou retirar outro valor' +
+               '</button>' +
              '</div>';
     }).join('') + '</div>';
+
+    return h + '</div>';
+  };
+
+  /* =========================================================
+     Editar meta — também é onde se guarda e se retira valor
+     ========================================================= */
+
+  Fin.telas.metaEdit = function (v, estado) {
+    var f = estado.forms.goalEdit;
+    var meta = v.metas.filter(function (g) { return g.id === estado.metaEditId; })[0];
+
+    var h = '<div class="screen">';
+
+    h += '<div class="head"><div class="head-title sm">Editar meta</div>' + fechar('metas') + '</div>';
+
+    if (!meta) {
+      return h + vazio('Meta não encontrada', 'Ela pode ter sido apagada.') + '</div>';
+    }
+
+    /* ---- movimentar valor ---- */
+    h += '<div class="card lg" style="margin-bottom:22px">' +
+           '<div class="between" style="margin-bottom:14px">' +
+             '<div style="font-size:14px;font-weight:800">' + esc(meta.name) + '</div>' +
+             '<div class="mono" style="font-size:13px;color:var(--muted)">' +
+               meta.savedFmt + ' / ' + meta.targetFmt +
+             '</div>' +
+           '</div>' +
+           barra(meta.pct) +
+           '<div class="label" style="margin:18px 2px 8px">Guardar ou retirar</div>' +
+           campo({ form: 'goalEdit', field: 'valor', value: f.valor,
+                   placeholder: '0,00', inputmode: 'decimal', mono: true }) +
+           '<div class="pair">' +
+             '<button class="btn-mov guardar" data-action="meta-guardar" type="button">Guardar</button>' +
+             '<button class="btn-mov retirar" data-action="meta-retirar" type="button">Retirar</button>' +
+           '</div>' +
+         '</div>';
+
+    /* ---- dados da meta ---- */
+    h += '<div class="label">Nome da meta</div>' +
+         campo({ form: 'goalEdit', field: 'name', value: f.name, placeholder: 'Ex: Viagem' });
+
+    h += '<div class="pair" style="margin-bottom:10px">' +
+           '<div><div class="label">Objetivo (R$)</div>' +
+             campo({ form: 'goalEdit', field: 'target', value: f.target,
+                     placeholder: '5000,00', inputmode: 'decimal', mono: true }) +
+           '</div>' +
+           '<div><div class="label">Já guardado</div>' +
+             campo({ form: 'goalEdit', field: 'saved', value: f.saved,
+                     placeholder: '0,00', inputmode: 'decimal', mono: true }) +
+           '</div>' +
+         '</div>';
+
+    h += '<button class="btn-primary" data-action="salvar-meta-edit" type="button">Salvar alterações</button>';
+
+    h += '<button class="btn-danger" data-action="del-meta" data-id="' + meta.id + '" type="button">Apagar esta meta</button>';
 
     return h + '</div>';
   };
@@ -748,24 +855,28 @@ window.Fin = window.Fin || {};
       return h + '</div>';
     }
 
-    /* ---- o que veio do extrato ---- */
-    h += '<div class="resumo-import" style="margin-top:22px">' +
+    /* ---- o que veio do extrato ----
+       A lista completa de lançamentos vive no Histórico; aqui fica só o
+       resumo, para esta tela não virar uma segunda lista igual. */
+    h += '<div class="section-title" style="margin-top:22px">Extrato importado</div>';
+
+    h += '<div class="resumo-import">' +
            '<div class="t">' + m.total + ' movimentação(ões) importada(s)</div>' +
            '<div class="n mono">' + m.saldoFmt + '</div>' +
            '<div class="s">' + m.entradasFmt + ' entrou · ' + m.saidasFmt + ' saiu</div>' +
          '</div>';
 
-    h += m.grupos.map(function (g) {
-      return '<div class="group-head">' +
-               '<div class="l">' + g.label + '</div>' +
-               '<div class="v mono ' + g.totalClass + '">' + g.totalFmt + '</div>' +
+    h += '<button class="card tap" style="margin-top:12px" data-nav="hist" type="button">' +
+           '<div class="between">' +
+             '<div>' +
+               '<div style="font-size:13px;font-weight:700">Ver os lançamentos</div>' +
+               '<div style="font-size:12px;color:var(--muted);margin-top:2px">No Histórico, junto com os que você digitou</div>' +
              '</div>' +
-             '<div class="stack tight">' +
-               g.items.map(function (t) { return linhaTx(t, true); }).join('') +
-             '</div>';
-    }).join('');
+             '<div style="font-size:11px;color:var(--muted);font-weight:600">abrir ›</div>' +
+           '</div>' +
+         '</button>';
 
-    h += '<button class="btn-ghost" style="margin-top:22px;margin-bottom:0" data-nav="importar" type="button">Importar outro extrato</button>';
+    h += '<button class="btn-ghost" style="margin-top:12px;margin-bottom:0" data-nav="importar" type="button">Importar outro extrato</button>';
 
     return h + '</div>';
   };

@@ -106,15 +106,102 @@ window.Fin = window.Fin || {};
       });
   }
 
+  /* ---------- lançamentos que se repetem todo mês ---------- */
+
+  // Dois registros são o mesmo compromisso mensal quando têm o mesmo tipo,
+  // a mesma categoria e a mesma descrição.
+  function chaveFixo(t) {
+    return t.type + '|' + t.category + '|' + String(t.note || '').trim().toLowerCase();
+  }
+
+  // Um "repete todo mês" vale UMA vez por mês, não uma vez por registro.
+  // Sem isso, marcar o salário como fixo em agosto e de novo em setembro
+  // faria o app achar que você passou a ganhar o dobro — e a previsão
+  // crescia sozinha a cada mês de uso.
+  Fin.fixosMensais = function (tx) {
+    var porChave = {};
+    tx.forEach(function (t) {
+      if (!t.fixed) return;
+      var k = chaveFixo(t);
+      // fica com a ocorrência mais recente: é ela que reflete o valor atual
+      if (!porChave[k] || t.date > porChave[k].date) porChave[k] = t;
+    });
+    return Object.keys(porChave).map(function (k) { return porChave[k]; });
+  };
+
+  /* ---------- resumo de um mês ----------
+
+     Separa o que JÁ aconteceu do que ainda está PROGRAMADO:
+
+     - já feito     → lançamentos do mês com data até hoje
+     - programado   → lançamentos com data futura dentro do mês
+                    + os "repete todo mês" que ainda não apareceram nele
+                    + as parcelas que vencem no mês
+
+     Num mês passado nada fica programado: tudo que ia acontecer já
+     aconteceu. Num mês futuro nada está feito.                        */
+
+  function resumoDoMes(dados, mes, mesAtual, hoje) {
+    var doMes = dados.tx.filter(function (t) {
+      return Fin.indiceMes(Fin.paraData(t.date)) === mes;
+    });
+
+    var feitoIn = 0, feitoOut = 0, progIn = 0, progOut = 0;
+
+    doMes.forEach(function (t) {
+      var jaAconteceu = t.date <= hoje;
+      if (t.type === 'in') {
+        if (jaAconteceu) feitoIn += t.amount; else progIn += t.amount;
+      } else {
+        if (jaAconteceu) feitoOut += t.amount; else progOut += t.amount;
+      }
+    });
+
+    var parcelasDoMes = 0;
+
+    if (mes >= mesAtual) {
+      var jaNoMes = {};
+      doMes.forEach(function (t) { jaNoMes[chaveFixo(t)] = true; });
+
+      Fin.fixosMensais(dados.tx).forEach(function (f) {
+        if (jaNoMes[chaveFixo(f)]) return;      // já foi lançado neste mês
+        if (f.type === 'in') progIn += f.amount; else progOut += f.amount;
+      });
+
+      // Parcelas não viram lançamento, então entram sempre como programadas.
+      parcelasDoMes = parcelasNoMes(dados.parcelas, mes);
+      progOut += parcelasDoMes;
+    }
+
+    return {
+      feitoIn: feitoIn, feitoOut: feitoOut,
+      progIn: progIn, progOut: progOut,
+      feitoInFmt: Fin.fmt(feitoIn), feitoOutFmt: Fin.fmt(feitoOut),
+      progInFmt: Fin.fmt(progIn), progOutFmt: Fin.fmt(progOut),
+      parcelasFmt: Fin.fmt(parcelasDoMes),
+      temParcelas: parcelasDoMes > 0,
+      // sobra prevista do mês, contando o que ainda vai acontecer
+      previstoFmt: Fin.fmt((feitoIn + progIn) - (feitoOut + progOut)),
+      previstoNegativo: (feitoIn + progIn) - (feitoOut + progOut) < 0,
+      temAlgo: doMes.length > 0 || progIn > 0 || progOut > 0,
+      lancamentos: doMes
+    };
+  }
+
   /* ---------- previsão de 12 meses ---------- */
 
   function previsao(dados, saldoAtual, mesAtual) {
     var tx = dados.tx;
 
-    var fixasEntram = tx.filter(function (t) { return t.fixed && t.type === 'in'; })
-                        .reduce(function (a, t) { return a + t.amount; }, 0);
-    var fixasSaem   = tx.filter(function (t) { return t.fixed && t.type === 'out'; })
-                        .reduce(function (a, t) { return a + t.amount; }, 0);
+    // Uma ocorrência por compromisso, não uma por registro: senão a
+    // previsão inflaria a cada mês que você remarcasse o mesmo fixo.
+    var fixos = Fin.fixosMensais(tx);
+    var fixosIn  = fixos.filter(function (t) { return t.type === 'in'; });
+    var fixosOut = fixos.filter(function (t) { return t.type === 'out'; });
+
+    var soma = function (l) { return l.reduce(function (a, t) { return a + t.amount; }, 0); };
+    var fixasEntram = soma(fixosIn);
+    var fixasSaem   = soma(fixosOut);
 
     // Média de gastos variáveis por mês: total variável ÷ meses com movimento.
     var variaveis = tx.filter(function (t) { return !t.fixed && t.type === 'out'; });
@@ -128,20 +215,48 @@ window.Fin = window.Fin || {};
     var pontos = [{ label: 'Hoje', v: saldoAtual }];
     var detalhe = [];
 
+    // O que compõe cada mês, para a linha poder ser aberta na tela.
+    var listaFixos = function (l) {
+      return l.map(function (t) {
+        return { nome: t.note || t.category, categoria: t.category,
+                 cor: Fin.cor(t.category), valorFmt: Fin.fmt(t.amount) };
+      }).sort(function (a, b) { return a.nome.localeCompare(b.nome); });
+    };
+
     for (var i = 0; i < 12; i++) {
       var mes = mesAtual + 1 + i;
       var inst = parcelasNoMes(dados.parcelas, mes);
       acumulado += fixasEntram - fixasSaem - inst - mediaVar;
       var rotulo = Fin.rotuloMes(mes);
       pontos.push({ label: rotulo, v: acumulado });
+
       detalhe.push({
+        ym: mes,
         label: rotulo,
+        labelLongo: Fin.MESES[mes % 12] + ' de ' + Math.floor(mes / 12),
         incomeFmt: '+ ' + Fin.fmt0(fixasEntram),
         fixedFmt:  '− ' + Fin.fmt0(fixasSaem),
         instFmt:   '− ' + Fin.fmt0(inst),
         varFmt:    '− ' + Fin.fmt0(mediaVar),
         balanceFmt: Fin.fmt(acumulado),
-        negative: acumulado < 0
+        negative: acumulado < 0,
+
+        entradasFixas: listaFixos(fixosIn),
+        saidasFixas: listaFixos(fixosOut),
+        parcelas: dados.parcelas.map(function (p) {
+          var partes = String(p.firstDue).split('-').map(Number);
+          var primeiro = partes[0] * 12 + (partes[1] - 1);
+          var n = mes - primeiro;
+          if (n < 0 || n >= p.parcels) return null;
+          return {
+            nome: p.description,
+            categoria: p.category,
+            cor: Fin.cor(p.category),
+            valorFmt: Fin.fmt(p.total / p.parcels),
+            posicao: (n + 1) + ' de ' + p.parcels
+          };
+        }).filter(Boolean),
+        mediaVarFmt: Fin.fmt(mediaVar)
       });
     }
 
@@ -335,17 +450,21 @@ window.Fin = window.Fin || {};
 
   /* ---------- entrada única ---------- */
 
-  Fin.calcular = function (dados, contaFiltro) {
+  Fin.calcular = function (dados, contaFiltro, mesRef) {
     var agora = new Date();
     var mesAtual = Fin.indiceMes(agora);
     var hora = agora.getHours();
+    var hoje = Fin.hojeISO();
+
+    // Mês que a tela inicial está mostrando (padrão: o corrente).
+    // Nome próprio: `mes` já é usado abaixo para os totais do mês.
+    var mesSel = (typeof mesRef === 'number') ? mesRef : mesAtual;
 
     var s = saldo(dados.tx);
     var mes = totaisDoMes(dados.tx, mesAtual);
 
-    var doMes = dados.tx.filter(function (t) {
-      return Fin.indiceMes(Fin.paraData(t.date)) === mesAtual;
-    });
+    var resumoMes = resumoDoMes(dados, mesSel, mesAtual, hoje);
+    var doMes = resumoMes.lancamentos;
     var ordenado = dados.tx.slice().sort(function (a, b) { return b.id - a.id; });
     var proj = previsao(dados, s, mesAtual);
 
@@ -358,8 +477,13 @@ window.Fin = window.Fin || {};
       entradasMesFmt: '+ ' + Fin.fmt(mes.entradas),
       saidasMesFmt: '− ' + Fin.fmt(mes.saidas),
 
-      // Gráficos do Início: só o mês corrente, que é o que o painel conta.
-      nomeDoMes: Fin.MESES[agora.getMonth()],
+      // Painel do Início, sempre referente ao mês escolhido no seletor
+      mesRef: mesSel,
+      mesLabel: Fin.MESES[((mesSel % 12) + 12) % 12] + ' de ' + Math.floor(mesSel / 12),
+      mesCurto: Fin.MESES[((mesSel % 12) + 12) % 12],
+      ehMesAtual: mesSel === mesAtual,
+      podeAvancar: mesSel < mesAtual + 12,
+      resumoMes: resumoMes,
       mesSaida: porCategoria(doMes, 'out', 6),
       mesEntrada: porCategoria(doMes, 'in', 4),
 
