@@ -208,9 +208,12 @@ window.Fin = window.Fin || {};
 
     /* ---- gráficos do mês escolhido ---- */
     if (v.mesSaida.temDados || v.mesEntrada.temDados) {
+      // Títulos neutros de propósito: estes gráficos contam todos os
+      // lançamentos com data no mês, inclusive os agendados que ainda não
+      // aconteceram. "Onde o dinheiro saiu" afirmaria algo falso sobre eles.
       h += '<div class="section-title">Por categoria · ' + v.mesCurto + '</div>';
-      h += graficoCategorias('Onde o dinheiro saiu', v.mesSaida, { esconderVazio: true });
-      h += graficoCategorias('De onde o dinheiro veio', v.mesEntrada, { esconderVazio: true });
+      h += graficoCategorias('Saídas por categoria', v.mesSaida, { esconderVazio: true });
+      h += graficoCategorias('Entradas por categoria', v.mesEntrada, { esconderVazio: true });
     }
 
     /* ---- metas ---- */
@@ -420,7 +423,9 @@ window.Fin = window.Fin || {};
                  return '<div class="proj-item">' +
                           '<i style="background:' + i.cor + '"></i>' +
                           '<span class="n">' + esc(i.nome) +
-                            (i.posicao ? ' <em>' + i.posicao + '</em>' : '') +
+                            // "3 de 12" numa parcela, "todo mês" num fixo,
+                            // "agendado" num lançamento com data futura
+                            ((i.posicao || i.marca) ? ' <em>' + esc(i.posicao || i.marca) + '</em>' : '') +
                           '</span>' +
                           '<span class="v mono ' + tipo + '">' + i.valorFmt + '</span>' +
                         '</div>';
@@ -434,39 +439,65 @@ window.Fin = window.Fin || {};
       p.detalhe.map(function (d) {
         var aberto = estado && estado.mesAberto === d.ym;
 
+        // O mês corrente é o único que já tem parte realizada, então mostra
+        // os dois lados: o que já entrou/saiu e o que ainda falta.
+        var resumo = d.ehMesAtual
+          ? '<div class="proj-tags">' +
+              '<span class="in">' + d.realizadoInFmt + ' entrou</span>' +
+              '<span class="out">' + d.realizadoOutFmt + ' saiu</span>' +
+              '<span class="prog">' + d.aFazerInFmt + ' a entrar</span>' +
+              '<span class="prog">' + d.aFazerOutFmt + ' a sair</span>' +
+            '</div>'
+          : '<div class="proj-tags">' +
+              '<span class="in">' + d.incomeFmt + ' entra</span>' +
+              '<span class="out">' + d.fixedFmt + ' fixo</span>' +
+              '<span class="out">' + d.instFmt + ' parcelas</span>' +
+              '<span class="out">' + d.varFmt + ' variável</span>' +
+            '</div>';
+
         var corpo = '<div class="card proj-row' + (aberto ? ' aberto' : '') +
+                      (d.ehMesAtual ? ' atual' : '') +
                       '" style="border-radius:16px;padding:14px 16px">' +
                       '<button class="proj-cab" data-action="abrir-mes" data-ym="' + d.ym + '" type="button">' +
                         '<div class="between">' +
                           '<div class="l">' + d.label +
+                            (d.ehMesAtual ? '<span class="proj-agora">agora</span>' : '') +
                             '<svg class="proj-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>' +
                           '</div>' +
                           '<div class="v mono' + (d.negative ? ' negative' : '') + '">' + d.balanceFmt + '</div>' +
                         '</div>' +
-                        '<div class="proj-tags">' +
-                          '<span class="in">' + d.incomeFmt + ' entra</span>' +
-                          '<span class="out">' + d.fixedFmt + ' fixo</span>' +
-                          '<span class="out">' + d.instFmt + ' parcelas</span>' +
-                          '<span class="out">' + d.varFmt + ' variável</span>' +
-                        '</div>' +
+                        resumo +
                       '</button>';
 
         if (aberto) {
-          var dentro =
-            comporLinhas('Entradas fixas', d.entradasFixas, 'in') +
-            comporLinhas('Gastos fixos', d.saidasFixas, 'out') +
-            comporLinhas('Parcelas', d.parcelas, 'out') +
-            '<div class="proj-bloco">' +
-              '<div class="proj-bloco-t">Gastos variáveis</div>' +
-              '<div class="proj-item">' +
-                '<i style="background:#c9ccc0"></i>' +
-                '<span class="n">Média dos seus meses</span>' +
-                '<span class="v mono out">' + d.mediaVarFmt + '</span>' +
-              '</div>' +
-            '</div>';
+          var dentro;
+
+          if (d.ehMesAtual) {
+            dentro = d.temPendencia
+              ? comporLinhas('Ainda entra', d.aindaEntra, 'in') +
+                comporLinhas('Ainda sai', d.aindaSai, 'out')
+              : '<div class="proj-bloco"><div class="proj-bloco-t">' +
+                  'Nada mais previsto para este mês.' +
+                '</div></div>';
+          } else {
+            dentro =
+              comporLinhas('Entradas fixas', d.entradasFixas, 'in') +
+              comporLinhas('Gastos fixos', d.saidasFixas, 'out') +
+              comporLinhas('Parcelas', d.parcelas, 'out') +
+              '<div class="proj-bloco">' +
+                '<div class="proj-bloco-t">Gastos variáveis</div>' +
+                '<div class="proj-item">' +
+                  '<i style="background:#c9ccc0"></i>' +
+                  '<span class="n">Média dos seus meses</span>' +
+                  '<span class="v mono out">' + d.mediaVarFmt + '</span>' +
+                '</div>' +
+              '</div>';
+          }
 
           corpo += '<div class="proj-detalhe">' +
-                     '<div class="proj-detalhe-t">O que compõe ' + d.labelLongo + '</div>' +
+                     '<div class="proj-detalhe-t">' +
+                       (d.ehMesAtual ? 'O que falta acontecer em ' : 'O que compõe ') + d.labelLongo +
+                     '</div>' +
                      dentro +
                    '</div>';
         }

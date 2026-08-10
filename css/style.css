@@ -497,6 +497,23 @@ svg { display: block; }
 
 .proj-tags .in  { color: var(--green); }
 .proj-tags .out { color: var(--red); }
+/* o que ainda não aconteceu fica em tinta neutra */
+.proj-tags .prog { color: var(--muted); }
+
+/* O mês corrente na Previsão */
+.proj-row.atual { border-color: rgba(20, 52, 43, .28); }
+
+.proj-agora {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: #eef1ea;
+  color: var(--deep);
+  border-radius: 6px;
+  padding: 2px 7px;
+  flex: none;
+}
 
 .between {
   display: flex;

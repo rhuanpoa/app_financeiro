@@ -11,8 +11,12 @@ window.Fin = window.Fin || {};
 
   /* ---------- saldo e mês corrente ---------- */
 
-  function saldo(tx) {
+  // Saldo é o dinheiro que você TEM, então só conta o que já aconteceu.
+  // Um gasto marcado para o dia 20 ainda não saiu da conta: ele aparece
+  // como programado, não descontado do saldo.
+  function saldo(tx, hoje) {
     return tx.reduce(function (a, t) {
+      if (t.date > hoje) return a;
       return a + (t.type === 'in' ? t.amount : -t.amount);
     }, 0);
   }
@@ -147,13 +151,22 @@ window.Fin = window.Fin || {};
     });
 
     var feitoIn = 0, feitoOut = 0, progIn = 0, progOut = 0;
+    var aindaEntra = [], aindaSai = [];
+
+    // Uma linha nomeada, para a Previsão poder listar o que falta acontecer.
+    function linha(nome, categoria, valor, marca) {
+      return { nome: nome, categoria: categoria, cor: Fin.cor(categoria),
+               valorFmt: Fin.fmt(valor), marca: marca || '' };
+    }
 
     doMes.forEach(function (t) {
       var jaAconteceu = t.date <= hoje;
       if (t.type === 'in') {
-        if (jaAconteceu) feitoIn += t.amount; else progIn += t.amount;
+        if (jaAconteceu) { feitoIn += t.amount; }
+        else { progIn += t.amount; aindaEntra.push(linha(t.note || t.category, t.category, t.amount, 'agendado')); }
       } else {
-        if (jaAconteceu) feitoOut += t.amount; else progOut += t.amount;
+        if (jaAconteceu) { feitoOut += t.amount; }
+        else { progOut += t.amount; aindaSai.push(linha(t.note || t.category, t.category, t.amount, 'agendado')); }
       }
     });
 
@@ -165,13 +178,25 @@ window.Fin = window.Fin || {};
 
       Fin.fixosMensais(dados.tx).forEach(function (f) {
         if (jaNoMes[chaveFixo(f)]) return;      // já foi lançado neste mês
-        if (f.type === 'in') progIn += f.amount; else progOut += f.amount;
+        var l = linha(f.note || f.category, f.category, f.amount, 'todo mês');
+        if (f.type === 'in') { progIn += f.amount; aindaEntra.push(l); }
+        else { progOut += f.amount; aindaSai.push(l); }
       });
 
       // Parcelas não viram lançamento, então entram sempre como programadas.
-      parcelasDoMes = parcelasNoMes(dados.parcelas, mes);
+      dados.parcelas.forEach(function (p) {
+        var partes = String(p.firstDue).split('-').map(Number);
+        var primeiro = partes[0] * 12 + (partes[1] - 1);
+        var n = mes - primeiro;
+        if (n < 0 || n >= p.parcels) return;
+        var valor = p.total / p.parcels;
+        parcelasDoMes += valor;
+        aindaSai.push(linha(p.description, p.category, valor, (n + 1) + ' de ' + p.parcels));
+      });
       progOut += parcelasDoMes;
     }
+
+    var previsto = (feitoIn + progIn) - (feitoOut + progOut);
 
     return {
       feitoIn: feitoIn, feitoOut: feitoOut,
@@ -181,8 +206,12 @@ window.Fin = window.Fin || {};
       parcelasFmt: Fin.fmt(parcelasDoMes),
       temParcelas: parcelasDoMes > 0,
       // sobra prevista do mês, contando o que ainda vai acontecer
-      previstoFmt: Fin.fmt((feitoIn + progIn) - (feitoOut + progOut)),
-      previstoNegativo: (feitoIn + progIn) - (feitoOut + progOut) < 0,
+      previsto: previsto,
+      previstoFmt: Fin.fmt(previsto),
+      previstoNegativo: previsto < 0,
+      // o que ainda falta acontecer, já ordenado do maior para o menor
+      aindaEntra: aindaEntra.sort(function (a, b) { return Fin.parse(b.valorFmt.slice(3)) - Fin.parse(a.valorFmt.slice(3)); }),
+      aindaSai: aindaSai.sort(function (a, b) { return Fin.parse(b.valorFmt.slice(3)) - Fin.parse(a.valorFmt.slice(3)); }),
       temAlgo: doMes.length > 0 || progIn > 0 || progOut > 0,
       lancamentos: doMes
     };
@@ -190,7 +219,7 @@ window.Fin = window.Fin || {};
 
   /* ---------- previsão de 12 meses ---------- */
 
-  function previsao(dados, saldoAtual, mesAtual) {
+  function previsao(dados, saldoAtual, mesAtual, resumoAtual) {
     var tx = dados.tx;
 
     // Uma ocorrência por compromisso, não uma por registro: senão a
@@ -223,6 +252,32 @@ window.Fin = window.Fin || {};
       }).sort(function (a, b) { return a.nome.localeCompare(b.nome); });
     };
 
+    /* ---- o mês corrente abre a lista ----
+       Ele é diferente dos outros: parte já aconteceu. Mostra os dois lados
+       e projeta o saldo do fim do mês somando só o que ainda falta.        */
+    acumulado += resumoAtual.progIn - resumoAtual.progOut;
+
+    pontos.push({ label: Fin.rotuloMes(mesAtual), v: acumulado });
+
+    detalhe.push({
+      ym: mesAtual,
+      ehMesAtual: true,
+      label: Fin.rotuloMes(mesAtual),
+      labelLongo: Fin.MESES[mesAtual % 12] + ' de ' + Math.floor(mesAtual / 12),
+
+      realizadoInFmt: '+ ' + Fin.fmt0(resumoAtual.feitoIn),
+      realizadoOutFmt: '− ' + Fin.fmt0(resumoAtual.feitoOut),
+      aFazerInFmt: '+ ' + Fin.fmt0(resumoAtual.progIn),
+      aFazerOutFmt: '− ' + Fin.fmt0(resumoAtual.progOut),
+
+      balanceFmt: Fin.fmt(acumulado),
+      negative: acumulado < 0,
+
+      aindaEntra: resumoAtual.aindaEntra,
+      aindaSai: resumoAtual.aindaSai,
+      temPendencia: resumoAtual.aindaEntra.length > 0 || resumoAtual.aindaSai.length > 0
+    });
+
     for (var i = 0; i < 12; i++) {
       var mes = mesAtual + 1 + i;
       var inst = parcelasNoMes(dados.parcelas, mes);
@@ -232,6 +287,7 @@ window.Fin = window.Fin || {};
 
       detalhe.push({
         ym: mes,
+        ehMesAtual: false,
         label: rotulo,
         labelLongo: Fin.MESES[mes % 12] + ' de ' + Math.floor(mes / 12),
         incomeFmt: '+ ' + Fin.fmt0(fixasEntram),
@@ -460,13 +516,18 @@ window.Fin = window.Fin || {};
     // Nome próprio: `mes` já é usado abaixo para os totais do mês.
     var mesSel = (typeof mesRef === 'number') ? mesRef : mesAtual;
 
-    var s = saldo(dados.tx);
+    var s = saldo(dados.tx, hoje);
     var mes = totaisDoMes(dados.tx, mesAtual);
 
     var resumoMes = resumoDoMes(dados, mesSel, mesAtual, hoje);
     var doMes = resumoMes.lancamentos;
+
+    // A previsão precisa do mês corrente, que pode não ser o selecionado.
+    var resumoAtual = mesSel === mesAtual
+      ? resumoMes
+      : resumoDoMes(dados, mesAtual, mesAtual, hoje);
     var ordenado = dados.tx.slice().sort(function (a, b) { return b.id - a.id; });
-    var proj = previsao(dados, s, mesAtual);
+    var proj = previsao(dados, s, mesAtual, resumoAtual);
 
     return {
       saudacao: hora < 12 ? 'Bom dia 👋' : hora < 18 ? 'Boa tarde 👋' : 'Boa noite 👋',
