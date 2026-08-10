@@ -473,11 +473,14 @@ window.Fin = window.Fin || {};
           var dentro;
 
           if (d.ehMesAtual) {
-            dentro = d.temPendencia
-              ? comporLinhas('Ainda entra', d.aindaEntra, 'in') +
+            // Os quatro lados: o que já aconteceu e o que ainda falta.
+            dentro = d.temAlgo
+              ? comporLinhas('Já entrou', d.jaEntrou, 'in') +
+                comporLinhas('Já saiu', d.jaSaiu, 'out') +
+                comporLinhas('Ainda entra', d.aindaEntra, 'in') +
                 comporLinhas('Ainda sai', d.aindaSai, 'out')
               : '<div class="proj-bloco"><div class="proj-bloco-t">' +
-                  'Nada mais previsto para este mês.' +
+                  'Nada registrado nem previsto para este mês.' +
                 '</div></div>';
           } else {
             dentro =
@@ -496,7 +499,7 @@ window.Fin = window.Fin || {};
 
           corpo += '<div class="proj-detalhe">' +
                      '<div class="proj-detalhe-t">' +
-                       (d.ehMesAtual ? 'O que falta acontecer em ' : 'O que compõe ') + d.labelLongo +
+                       (d.ehMesAtual ? 'Lançamentos de ' : 'O que compõe ') + d.labelLongo +
                      '</div>' +
                      dentro +
                    '</div>';
@@ -519,7 +522,7 @@ window.Fin = window.Fin || {};
      Histórico
      ========================================================= */
 
-  Fin.telas.hist = function (v) {
+  Fin.telas.hist = function (v, estado) {
     var h = '<div class="screen">';
 
     h += '<div class="head"><div>' +
@@ -531,15 +534,37 @@ window.Fin = window.Fin || {};
       return h + vazio('Nenhum lançamento ainda', 'Registre uma saída ou entrada para começar.') + '</div>';
     }
 
-    h += v.historico.map(function (g) {
-      return '<div class="group-head">' +
-               '<div class="l">' + g.label + '</div>' +
-               '<div class="v mono ' + g.totalClass + '">' + g.totalFmt + '</div>' +
-             '</div>' +
-             '<div class="stack tight">' +
-               g.items.map(function (t) { return linhaTx(t, true); }).join('') +
+    h += '<div class="hint" style="text-align:left;margin:0 2px 12px">' +
+           'Toque num mês para abrir os lançamentos dele.' +
+         '</div>';
+
+    // Meses fechados por padrão: a lista inteira aberta ficava enorme
+    // depois de importar um extrato. Mesmo gesto da Previsão.
+    h += '<div class="stack tight">' + v.historico.map(function (g) {
+      var aberto = estado && estado.mesHist === g.ym;
+
+      return '<div class="card hist-mes' + (aberto ? ' aberto' : '') +
+               '" style="border-radius:16px;padding:14px 16px">' +
+               '<button class="proj-cab" data-action="abrir-mes-hist" data-ym="' + g.ym + '" type="button">' +
+                 '<div class="between">' +
+                   '<div class="l">' + g.label +
+                     '<svg class="proj-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>' +
+                   '</div>' +
+                   '<div class="v mono ' + g.totalClass + '">' + g.totalFmt + '</div>' +
+                 '</div>' +
+                 '<div class="hist-resumo">' +
+                   '<span class="in">' + g.entradasFmt + '</span>' +
+                   '<span class="out">' + g.saidasFmt + '</span>' +
+                   '<span class="qtd">' + g.qtd + ' lançamento(s)</span>' +
+                 '</div>' +
+               '</button>' +
+               (aberto
+                 ? '<div class="proj-detalhe"><div class="stack tight">' +
+                     g.items.map(function (t) { return linhaTx(t, true); }).join('') +
+                   '</div></div>'
+                 : '') +
              '</div>';
-    }).join('');
+    }).join('') + '</div>';
 
     return h + '</div>';
   };

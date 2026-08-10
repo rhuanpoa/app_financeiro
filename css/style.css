@@ -500,6 +500,30 @@ svg { display: block; }
 /* o que ainda não aconteceu fica em tinta neutra */
 .proj-tags .prog { color: var(--muted); }
 
+/* Mês recolhido no Histórico */
+.hist-mes .l {
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hist-mes.aberto .proj-seta { transform: rotate(180deg); }
+
+.hist-resumo {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.hist-resumo .in  { color: var(--green); }
+.hist-resumo .out { color: var(--red); }
+.hist-resumo .qtd { color: var(--muted); }
+
 /* O mês corrente na Previsão */
 .proj-row.atual { border-color: rgba(20, 52, 43, .28); }
 

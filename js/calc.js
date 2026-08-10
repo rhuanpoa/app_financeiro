@@ -92,18 +92,24 @@ window.Fin = window.Fin || {};
         mapa[chave] = {
           ym: chave,
           label: Fin.MESES[d.getMonth()] + ' de ' + d.getFullYear(),
-          items: [], total: 0
+          items: [], total: 0, entradas: 0, saidas: 0
         };
       }
       mapa[chave].items.push(verTx(t));
-      mapa[chave].total += t.type === 'in' ? t.amount : -t.amount;
+      if (t.type === 'in') { mapa[chave].total += t.amount; mapa[chave].entradas += t.amount; }
+      else { mapa[chave].total -= t.amount; mapa[chave].saidas += t.amount; }
     });
     return Object.keys(mapa).map(function (k) { return mapa[k]; })
       .sort(function (a, b) { return b.ym - a.ym; })
       .map(function (g) {
         return {
+          // `ym` sai daqui para a tela saber qual mês está aberto
+          ym: g.ym,
           label: g.label,
           items: g.items,
+          qtd: g.items.length,
+          entradasFmt: '+ ' + Fin.fmt(g.entradas),
+          saidasFmt: '− ' + Fin.fmt(g.saidas),
           totalFmt: (g.total >= 0 ? '+ ' : '− ') + Fin.fmt(Math.abs(g.total)),
           totalClass: g.total >= 0 ? 'in' : 'out'
         };
@@ -145,28 +151,36 @@ window.Fin = window.Fin || {};
      Num mês passado nada fica programado: tudo que ia acontecer já
      aconteceu. Num mês futuro nada está feito.                        */
 
+  function porValor(lista) {
+    return lista.sort(function (a, b) { return b.valor - a.valor; });
+  }
+
   function resumoDoMes(dados, mes, mesAtual, hoje) {
     var doMes = dados.tx.filter(function (t) {
       return Fin.indiceMes(Fin.paraData(t.date)) === mes;
     });
 
     var feitoIn = 0, feitoOut = 0, progIn = 0, progOut = 0;
-    var aindaEntra = [], aindaSai = [];
+    var aindaEntra = [], aindaSai = [], jaEntrou = [], jaSaiu = [];
 
-    // Uma linha nomeada, para a Previsão poder listar o que falta acontecer.
+    // Uma linha nomeada, para a Previsão poder listar item a item.
     function linha(nome, categoria, valor, marca) {
       return { nome: nome, categoria: categoria, cor: Fin.cor(categoria),
-               valorFmt: Fin.fmt(valor), marca: marca || '' };
+               valor: valor, valorFmt: Fin.fmt(valor), marca: marca || '' };
     }
 
     doMes.forEach(function (t) {
       var jaAconteceu = t.date <= hoje;
+      var dia = 'dia ' + Fin.paraData(t.date).getDate();
+      var l = linha(t.note || t.category, t.category, t.amount,
+                    jaAconteceu ? dia : 'agendado · ' + dia);
+
       if (t.type === 'in') {
-        if (jaAconteceu) { feitoIn += t.amount; }
-        else { progIn += t.amount; aindaEntra.push(linha(t.note || t.category, t.category, t.amount, 'agendado')); }
+        if (jaAconteceu) { feitoIn += t.amount; jaEntrou.push(l); }
+        else { progIn += t.amount; aindaEntra.push(l); }
       } else {
-        if (jaAconteceu) { feitoOut += t.amount; }
-        else { progOut += t.amount; aindaSai.push(linha(t.note || t.category, t.category, t.amount, 'agendado')); }
+        if (jaAconteceu) { feitoOut += t.amount; jaSaiu.push(l); }
+        else { progOut += t.amount; aindaSai.push(l); }
       }
     });
 
@@ -209,9 +223,11 @@ window.Fin = window.Fin || {};
       previsto: previsto,
       previstoFmt: Fin.fmt(previsto),
       previstoNegativo: previsto < 0,
-      // o que ainda falta acontecer, já ordenado do maior para o menor
-      aindaEntra: aindaEntra.sort(function (a, b) { return Fin.parse(b.valorFmt.slice(3)) - Fin.parse(a.valorFmt.slice(3)); }),
-      aindaSai: aindaSai.sort(function (a, b) { return Fin.parse(b.valorFmt.slice(3)) - Fin.parse(a.valorFmt.slice(3)); }),
+      // Listas item a item, do maior valor para o menor.
+      jaEntrou: porValor(jaEntrou),
+      jaSaiu: porValor(jaSaiu),
+      aindaEntra: porValor(aindaEntra),
+      aindaSai: porValor(aindaSai),
       temAlgo: doMes.length > 0 || progIn > 0 || progOut > 0,
       lancamentos: doMes
     };
@@ -273,9 +289,13 @@ window.Fin = window.Fin || {};
       balanceFmt: Fin.fmt(acumulado),
       negative: acumulado < 0,
 
+      // os quatro lados do mês, item a item
+      jaEntrou: resumoAtual.jaEntrou,
+      jaSaiu: resumoAtual.jaSaiu,
       aindaEntra: resumoAtual.aindaEntra,
       aindaSai: resumoAtual.aindaSai,
-      temPendencia: resumoAtual.aindaEntra.length > 0 || resumoAtual.aindaSai.length > 0
+      temAlgo: resumoAtual.jaEntrou.length > 0 || resumoAtual.jaSaiu.length > 0 ||
+               resumoAtual.aindaEntra.length > 0 || resumoAtual.aindaSai.length > 0
     });
 
     for (var i = 0; i < 12; i++) {

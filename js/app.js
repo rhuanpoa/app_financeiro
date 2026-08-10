@@ -27,6 +27,9 @@
     mesRef: null,
     // Mês aberto na tela de Previsão (índice absoluto), ou null.
     mesAberto: null,
+    // Mês aberto no Histórico. Começa fechado: a lista inteira aberta
+    // fica enorme depois de importar um extrato.
+    mesHist: null,
     // Meta sendo editada
     metaEditId: null,
     forms: Fin.formsEmBranco()
@@ -700,6 +703,15 @@
       case 'abrir-mes': {
         var ym = Number(alvo.dataset.ym);
         estado.mesAberto = estado.mesAberto === ym ? null : ym;
+        render(true);
+        break;
+      }
+
+      // O mesmo no Histórico, com estado próprio: abrir um mês lá não
+      // pode mexer no que está aberto na Previsão.
+      case 'abrir-mes-hist': {
+        var ymh = Number(alvo.dataset.ym);
+        estado.mesHist = estado.mesHist === ymh ? null : ymh;
         render(true);
         break;
       }

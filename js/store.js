@@ -17,7 +17,7 @@ window.Fin = window.Fin || {};
        3. VERSAO em sw.js (troca o cache, senão o celular abre o antigo)
      O botão "Buscar atualização" no menu existe justamente para flagrar
      quando um deles ficou para trás. */
-  Fin.VERSAO = 'v12';
+  Fin.VERSAO = 'v13';
 
   Fin.CATS = [
     { name: 'Alimentação',    color: '#d9822b' },
