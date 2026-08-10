@@ -538,14 +538,21 @@ window.Fin = window.Fin || {};
     ['Vendas',        /venda|recebiment\s?de\s?venda/]
   ];
 
-  // Sugere uma categoria pelo descritivo. Só devolve nome que exista de
-  // verdade naquele tipo (inclusive as categorias criadas pelo usuário).
-  Fin.palpiteCategoria = function (memo, tipo) {
+  // Sugere uma categoria pelo descritivo, dizendo de onde veio o palpite.
+  // Só devolve nome que exista de verdade naquele tipo.
+  Fin.palpiteDetalhado = function (memo, tipo) {
     var texto = String(memo || '').toLowerCase();
     var disponiveis = Fin.catsDe(tipo);
 
     function existe(nome) {
       return disponiveis.some(function (c) { return c.name === nome; }) ? nome : '';
+    }
+
+    // 1º: o que VOCÊ já escolheu para este mesmo destinatário. Ganha de
+    // qualquer palavra-chave — é decisão sua, não chute do app.
+    var regra = Fin.regraPara(memo, tipo);
+    if (regra && existe(regra.category)) {
+      return { category: regra.category, origem: 'aprendido' };
     }
 
     // As categorias do próprio usuário têm prioridade: se o nome dela
@@ -555,16 +562,60 @@ window.Fin = window.Fin || {};
       .find(function (c) {
         return c.name.length >= 3 && texto.indexOf(c.name.toLowerCase()) !== -1;
       });
-    if (propria) return propria.name;
+    if (propria) return { category: propria.name, origem: 'sua categoria' };
 
     var regras = tipo === 'in' ? REGRAS_ENTRADA : REGRAS_SAIDA;
     for (var i = 0; i < regras.length; i++) {
       if (regras[i][1].test(texto)) {
         var achou = existe(regras[i][0]);
-        if (achou) return achou;
+        if (achou) return { category: achou, origem: 'palavra-chave' };
       }
     }
-    return '';
+    return { category: '', origem: '' };
+  };
+
+  Fin.palpiteCategoria = function (memo, tipo) {
+    return Fin.palpiteDetalhado(memo, tipo).category;
+  };
+
+  /* ---------------------------------------------------------
+     Aprender com o que você escolheu
+
+     Ao confirmar a revisão, cada movimentação vira uma regra
+     "este destinatário é desta categoria". Na próxima importação
+     ela já vem preenchida.
+     --------------------------------------------------------- */
+
+  Fin.aprender = function (regras, itens) {
+    var lista = Array.isArray(regras) ? regras.slice() : [];
+
+    itens.forEach(function (it) {
+      if (!it.category) return;
+      var chave = Fin.chaveDestinatario(it.memo);
+      // chave curta demais identificaria coisas demais
+      if (!chave || chave.length < 3) return;
+
+      var atual = lista.find(function (r) {
+        return r.chave === chave && r.type === it.type;
+      });
+
+      if (atual) {
+        // a escolha mais recente manda
+        atual.category = it.category;
+        atual.usos = (atual.usos || 1) + 1;
+        atual.exemplo = it.memo;
+      } else {
+        lista.push({
+          chave: chave,
+          type: it.type,
+          category: it.category,
+          exemplo: it.memo,
+          usos: 1
+        });
+      }
+    });
+
+    return lista;
   };
 
   /* ---------------------------------------------------------
@@ -598,9 +649,15 @@ window.Fin = window.Fin || {};
 
     var novos = [], repetidos = 0, seq = 0;
 
+    var aprendidos = 0;
+
     itens.forEach(function (it) {
       if (vistos[it.fitid]) { repetidos++; return; }
       vistos[it.fitid] = true;
+
+      var palpite = Fin.palpiteDetalhado(it.memo, it.type);
+      if (palpite.origem === 'aprendido') aprendidos++;
+
       novos.push({
         id: Date.now() + (seq++),
         fitid: it.fitid,
@@ -609,11 +666,13 @@ window.Fin = window.Fin || {};
         type: it.type,
         memo: it.memo,
         conta: it.conta,
-        category: Fin.palpiteCategoria(it.memo, it.type)
+        category: palpite.category,
+        // de onde veio a sugestão, para a revisão poder mostrar
+        origemPalpite: palpite.origem
       });
     });
 
-    return { novos: novos, repetidos: repetidos };
+    return { novos: novos, repetidos: repetidos, aprendidos: aprendidos };
   };
 
 })(window.Fin);

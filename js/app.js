@@ -18,6 +18,7 @@
 
   var dados = Fin.carregar();
   Fin.usarCategorias(dados.cats);
+  Fin.usarRegras(dados.regras);
 
   var estado = {
     screen: 'dash',
@@ -130,9 +131,10 @@
   }
 
   function persistir() {
-    // As categorias próprias precisam estar visíveis para Fin.cor()
-    // antes de qualquer novo render.
+    // As categorias próprias e as regras aprendidas precisam estar
+    // visíveis para Fin.cor() e Fin.regraPara() antes de qualquer render.
     Fin.usarCategorias(dados.cats);
+    Fin.usarRegras(dados.regras);
     if (!Fin.salvar(dados)) {
       toast('Não consegui salvar neste navegador');
     }
@@ -385,7 +387,8 @@
             parcelas: Array.isArray(d.parcelas) ? d.parcelas : [],
             goals: Array.isArray(d.goals) ? d.goals : [],
             cats: Array.isArray(d.cats) ? d.cats : [],
-            pendentes: Array.isArray(d.pendentes) ? d.pendentes : []
+            pendentes: Array.isArray(d.pendentes) ? d.pendentes : [],
+            regras: Array.isArray(d.regras) ? d.regras : []
           };
           persistir();
           irPara('dash');
@@ -439,6 +442,7 @@
             persistir();
             irPara('movimentacoes');
             toast(res.novos.length + ' nova(s) do ' + lido.formato +
+                  (res.aprendidos ? ' · ' + res.aprendidos + ' já categorizada(s)' : '') +
                   (res.repetidos ? ' · ' + res.repetidos + ' repetida(s)' : '') + ' ✓');
           })
           .catch(function (e) {
@@ -465,6 +469,12 @@
 
     var qtd = dados.pendentes.length;
 
+    // Aprende antes de esvaziar a fila: a categoria que você confirmou
+    // aqui é a que vai vir pronta na próxima importação.
+    var antes = dados.regras.length;
+    dados.regras = Fin.aprender(dados.regras, dados.pendentes);
+    var novasRegras = dados.regras.length - antes;
+
     dados.pendentes.forEach(function (p) {
       dados.tx.push({
         id: p.id,
@@ -483,7 +493,18 @@
     dados.pendentes = [];
     persistir();
     render();
-    toast(qtd + ' movimentação(ões) no caixa ✓');
+    toast(qtd + ' no caixa ✓' +
+          (novasRegras ? ' · aprendi ' + novasRegras + ' destinatário(s)' : ''));
+  }
+
+  function esquecerRegras() {
+    if (!dados.regras.length) { toast('Nada aprendido ainda'); return; }
+    if (!confirm('Esquecer as ' + dados.regras.length +
+                 ' categorias aprendidas? Os lançamentos já feitos não mudam.')) return;
+    dados.regras = [];
+    persistir();
+    render();
+    toast('Aprendizado apagado');
   }
 
   function descartarPendentes() {
@@ -698,6 +719,7 @@
       case 'aplicar-atualizacao': aplicarAtualizacao(); break;
 
       case 'escolher-extrato':     escolherExtrato(); break;
+      case 'esquecer-regras':      esquecerRegras(); break;
       case 'confirmar-pendentes':  confirmarPendentes(); break;
       case 'descartar-pendentes':  descartarPendentes(); break;
       case 'del-pendente':         apagar('pendentes', id, 'Movimentação descartada'); break;

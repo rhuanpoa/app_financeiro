@@ -496,6 +496,55 @@ window.Fin = window.Fin || {};
 
   Fin.porCategoria = porCategoria;
 
+  /* ---------- evolução mês a mês ----------
+
+     Duas séries no mesmo eixo: entradas e saídas. Os meses são contínuos,
+     incluindo os sem movimento — pular um mês vazio faria uma pausa
+     parecer uma queda. A escala é compartilhada pelas duas séries, senão
+     uma barra de saída pareceria maior que uma entrada do dobro.        */
+
+  function evolucao(tx, mesAtual, quantos) {
+    var porMes = {};
+    tx.forEach(function (t) {
+      var m = Fin.indiceMes(Fin.paraData(t.date));
+      if (!porMes[m]) porMes[m] = { entradas: 0, saidas: 0 };
+      if (t.type === 'in') porMes[m].entradas += t.amount;
+      else porMes[m].saidas += t.amount;
+    });
+
+    var meses = [];
+    for (var i = quantos - 1; i >= 0; i--) meses.push(mesAtual - i);
+
+    var maior = meses.reduce(function (mx, m) {
+      var d = porMes[m] || { entradas: 0, saidas: 0 };
+      return Math.max(mx, d.entradas, d.saidas);
+    }, 0);
+
+    var temAlgo = maior > 0;
+
+    return {
+      temAlgo: temAlgo,
+      quantos: quantos,
+      linhas: meses.map(function (m) {
+        var d = porMes[m] || { entradas: 0, saidas: 0 };
+        var saldo = d.entradas - d.saidas;
+        return {
+          ym: m,
+          label: Fin.rotuloMes(m),
+          ehAtual: m === mesAtual,
+          entradasFmt: '+ ' + Fin.fmt(d.entradas),
+          saidasFmt: '− ' + Fin.fmt(d.saidas),
+          saldoFmt: (saldo >= 0 ? '+ ' : '− ') + Fin.fmt(Math.abs(saldo)),
+          saldoClasse: saldo >= 0 ? 'in' : 'out',
+          // largura relativa à maior barra de qualquer um dos meses
+          pctIn: maior ? Math.round(d.entradas / maior * 100) : 0,
+          pctOut: maior ? Math.round(d.saidas / maior * 100) : 0,
+          vazio: d.entradas === 0 && d.saidas === 0
+        };
+      })
+    };
+  }
+
   /* ---------- metas ---------- */
 
   function verMetas(goals) {
@@ -524,6 +573,8 @@ window.Fin = window.Fin || {};
           memo: p.memo,
           category: p.category,
           type: p.type,
+          // "aprendido" quando a categoria veio de uma escolha sua anterior
+          aprendido: p.origemPalpite === 'aprendido',
           meta: d.getDate() + ' ' + Fin.MESES[d.getMonth()] + ' · ' + p.conta,
           amountFmt: (entrada ? '+ ' : '− ') + Fin.fmt(p.amount),
           amountClass: entrada ? 'in' : 'out'
@@ -532,7 +583,7 @@ window.Fin = window.Fin || {};
   }
 
   // Lançamentos que vieram de extrato, já confirmados.
-  function verImportados(tx, conta) {
+  function verImportados(tx, conta, mesAtual) {
     var doExtrato = tx.filter(function (t) { return t.origem === 'extrato'; });
 
     var contas = [];
@@ -560,6 +611,7 @@ window.Fin = window.Fin || {};
       // Gráficos da tela de Movimentações: todos os lançamentos.
       catsSaida: porCategoria(baseGraficos, 'out', 9),
       catsEntrada: porCategoria(baseGraficos, 'in', 7),
+      evolucao: evolucao(baseGraficos, mesAtual, 6),
       escopoGraficos: conta || 'Todos os lançamentos',
       qtdGraficos: baseGraficos.length,
       temImportados: doExtrato.length > 0,
@@ -632,10 +684,11 @@ window.Fin = window.Fin || {};
 
       pendentes: verPendentes(dados.pendentes),
       qtdPendentes: dados.pendentes.length,
+      qtdRegras: (dados.regras || []).length,
       temPendentes: dados.pendentes.length > 0,
       // Só dá para confirmar quando todas tiverem categoria escolhida.
       faltaCategoria: dados.pendentes.filter(function (p) { return !p.category; }).length,
-      movimentos: verImportados(dados.tx, contaFiltro),
+      movimentos: verImportados(dados.tx, contaFiltro, mesAtual),
       previsao: proj
     };
   };

@@ -157,6 +157,26 @@ O que é importado fica numa fila de revisão em *Movimentações* e **não entr
 saldo até você confirmar**. O arquivo é lido dentro do próprio navegador —
 nada é enviado para a internet.
 
+### O app aprende com você
+
+Ao confirmar a revisão, a categoria escolhida para cada destinatário fica
+guardada. Na importação seguinte ela volta preenchida e a linha aparece
+marcada como **aprendido** — só o que for novo pede escolha.
+
+O reconhecimento ignora o que muda de uma linha para outra (data, hora,
+CPF/CNPJ, número da filial) e guarda o nome. As três linhas abaixo dão a
+mesma chave, `hs do brasil`:
+
+```
+Pix - Enviado · 05/07 15:32 HS DO BRASIL LTDA.
+Pix - Enviado · 21/07 19:25 HS DO BRASIL LTDA.
+Pix - Enviado · 09/07 13:22 HS DO BRASIL LTDA.
+```
+
+Sua escolha tem prioridade sobre o palpite por palavra-chave. Em
+*Importar extrato* dá para ver quantos destinatários o app conhece e apagar
+tudo o que ele aprendeu — os lançamentos já feitos não mudam.
+
 ## Sobre os gráficos
 
 Barras horizontais ordenadas da maior para a menor — a mesma figura responde

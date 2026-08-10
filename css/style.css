@@ -1385,6 +1385,108 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
 .chart-fill.resto { background: var(--muted); }
 
 /* ---------------------------------------------------------
+   Evolução mês a mês
+
+   Duas séries pedem legenda. Os meses vêm do mais antigo para o
+   mais recente, para a leitura de cima para baixo ser a linha do
+   tempo. As barras dividem a mesma escala.
+   --------------------------------------------------------- */
+
+.evo-legenda {
+  display: flex;
+  gap: 16px;
+  margin: -6px 0 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.evo-legenda span { display: flex; align-items: center; gap: 6px; }
+
+.evo-legenda i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: block;
+}
+
+.evo-legenda i.in  { background: var(--green); }
+.evo-legenda i.out { background: var(--red); }
+
+.evo { display: flex; flex-direction: column; gap: 16px; }
+
+.evo-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.evo-mes {
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.evo-mes em {
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: #eef1ea;
+  color: var(--deep);
+  border-radius: 5px;
+  padding: 2px 5px;
+}
+
+.evo-saldo { font-size: 13px; font-weight: 600; }
+.evo-saldo.in  { color: var(--green); }
+.evo-saldo.out { color: var(--red); }
+
+.evo-vazio { font-size: 11px; color: var(--faint); font-weight: 600; }
+
+.evo-par {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 5px;
+}
+
+/* O trilho ocupa o espaço que sobra; a barra é uma porcentagem dele */
+.evo-trilho {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  height: 8px;
+}
+
+/* barra fina, ponta arredondada só onde o dado termina */
+.evo-trilho i {
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  display: block;
+  min-width: 2px;
+}
+
+.evo-trilho i.in  { background: var(--green); }
+.evo-trilho i.out { background: var(--red); }
+
+/* nada aconteceu daquele lado: nenhuma barra, nem o mínimo de 2px */
+.evo-trilho i.zero { display: none; }
+
+.evo-par > span.mono {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------
    Importar extrato / Movimentações
    --------------------------------------------------------- */
 
@@ -1443,6 +1545,37 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
 .formato .tag.ok { background: #e5f2ea; color: var(--green); }
 .formato .t { font-size: 13px; font-weight: 700; }
 .formato .s { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+
+/* O que o app aprendeu com as suas escolhas */
+.aprendido-box {
+  background: #e5f2ea;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-top: 16px;
+}
+
+.aprendido-box .t { font-size: 13px; font-weight: 700; color: #146a45; }
+.aprendido-box .s { font-size: 12px; color: #2f6b4f; margin-top: 4px; line-height: 1.5; }
+
+.aprendido-box button {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--red);
+  padding: 6px 0;
+}
+
+/* Marca na revisão: a categoria veio de uma escolha sua anterior */
+.marca-aprendido {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--green);
+  background: #e5f2ea;
+  border-radius: 5px;
+  padding: 1px 5px;
+  margin-left: 3px;
+}
 
 /* Faixa de aviso sobre a revisão pendente */
 .aviso {

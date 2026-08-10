@@ -115,6 +115,58 @@ window.Fin = window.Fin || {};
            '</div>';
   }
 
+  /* Evolução mês a mês: duas séries (entradas e saídas) no mesmo eixo.
+     Duas séries pedem legenda, e cada valor fica escrito ao lado da
+     própria barra — no celular não existe passar o mouse para descobrir. */
+  function graficoEvolucao(evo) {
+    if (!evo.temAlgo) return '';
+
+    return '<div class="grafico">' +
+             '<div class="grafico-topo">' +
+               '<div class="grafico-titulo">Evolução</div>' +
+               '<div style="font-size:11px;color:var(--muted);font-weight:600">' +
+                 'últimos ' + evo.quantos + ' meses' +
+               '</div>' +
+             '</div>' +
+
+             '<div class="evo-legenda">' +
+               '<span><i class="in"></i>Entradas</span>' +
+               '<span><i class="out"></i>Saídas</span>' +
+             '</div>' +
+
+             '<div class="evo">' +
+               evo.linhas.map(function (l) {
+                 return '<div class="evo-linha' + (l.ehAtual ? ' atual' : '') + '">' +
+                          '<div class="evo-topo">' +
+                            '<span class="evo-mes">' + l.label +
+                              (l.ehAtual ? '<em>agora</em>' : '') +
+                            '</span>' +
+                            (l.vazio
+                              ? '<span class="evo-vazio">sem movimento</span>'
+                              : '<span class="evo-saldo mono ' + l.saldoClasse + '">' + l.saldoFmt + '</span>') +
+                          '</div>' +
+                          // O trilho é que ocupa o espaço livre; a barra é uma
+                          // porcentagem DELE. Sem o trilho, uma barra de 100%
+                          // mais o valor ao lado estouraria a linha.
+                          (l.vazio ? '' :
+                            // valor zero não desenha barra nenhuma: o mínimo
+                            // de 2px viraria um risco onde não houve nada
+                            '<div class="evo-par">' +
+                              '<span class="evo-trilho"><i class="in' + (l.pctIn ? '' : ' zero') +
+                                '" style="width:' + l.pctIn + '%"></i></span>' +
+                              '<span class="mono">' + l.entradasFmt + '</span>' +
+                            '</div>' +
+                            '<div class="evo-par">' +
+                              '<span class="evo-trilho"><i class="out' + (l.pctOut ? '' : ' zero') +
+                                '" style="width:' + l.pctOut + '%"></i></span>' +
+                              '<span class="mono">' + l.saidasFmt + '</span>' +
+                            '</div>') +
+                        '</div>';
+               }).join('') +
+             '</div>' +
+           '</div>';
+  }
+
   function campo(opts) {
     return '<input class="field ' + (opts.mono ? 'mono' : '') + '"' +
            ' type="' + (opts.type || 'text') + '"' +
@@ -824,7 +876,7 @@ window.Fin = window.Fin || {};
      Importar extrato
      ========================================================= */
 
-  Fin.telas.importar = function () {
+  Fin.telas.importar = function (v) {
     var formatos = [
       { tag: 'OFX', ok: true, t: 'OFX / Money',
         s: 'O melhor formato. Traz um código único por transação, então dá para reimportar o mesmo extrato sem duplicar nada.' },
@@ -855,6 +907,15 @@ window.Fin = window.Fin || {};
                         '</div>';
                }).join('') +
              '</div>' +
+
+             (v.qtdRegras
+               ? '<div class="aprendido-box">' +
+                   '<div class="t">O app já conhece ' + v.qtdRegras + ' destinatário(s)</div>' +
+                   '<div class="s">A categoria que você confirmou para cada um volta preenchida ' +
+                     'na próxima importação. Só o que for novo precisa de escolha.</div>' +
+                   '<button data-action="esquecer-regras" type="button">Esquecer o que aprendi</button>' +
+                 '</div>'
+               : '') +
 
              '<div class="hint" style="margin-top:18px;line-height:1.6">O arquivo é lido aqui mesmo, no seu celular.<br>Nada é enviado para a internet.</div>' +
            '</div>';
@@ -905,7 +966,11 @@ window.Fin = window.Fin || {};
                    '<div class="pend-topo">' +
                      '<div class="body">' +
                        '<div class="title">' + esc(p.memo) + '</div>' +
-                       '<div class="meta">' + esc(p.meta) + '</div>' +
+                       '<div class="meta">' + esc(p.meta) +
+                         // avisa quando a categoria já veio da sua escolha
+                         // anterior, para você saber por que está preenchida
+                         (p.aprendido ? ' <em class="marca-aprendido">aprendido</em>' : '') +
+                       '</div>' +
                      '</div>' +
                      '<div class="amount mono ' + p.amountClass + '">' + p.amountFmt + '</div>' +
                      '<button class="del" data-action="del-pendente" data-id="' + p.id + '" type="button" aria-label="Descartar">✕</button>' +
@@ -939,6 +1004,7 @@ window.Fin = window.Fin || {};
            '</div>';
       h += graficoCategorias('Onde mais saiu', m.catsSaida, { mostrarShare: true });
       h += graficoCategorias('De onde mais veio', m.catsEntrada, { mostrarShare: true });
+      h += graficoEvolucao(m.evolucao);
     }
 
     /* ---- nada importado ainda ---- */

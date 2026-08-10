@@ -17,7 +17,7 @@ window.Fin = window.Fin || {};
        3. VERSAO em sw.js (troca o cache, senão o celular abre o antigo)
      O botão "Buscar atualização" no menu existe justamente para flagrar
      quando um deles ficou para trás. */
-  Fin.VERSAO = 'v14';
+  Fin.VERSAO = 'v15';
 
   Fin.CATS = [
     { name: 'Alimentação',    color: '#d9822b' },
@@ -84,7 +84,60 @@ window.Fin = window.Fin || {};
   /* ---------- persistência ---------- */
 
   Fin.vazio = function () {
-    return { tx: [], parcelas: [], goals: [], cats: [], pendentes: [] };
+    return { tx: [], parcelas: [], goals: [], cats: [], pendentes: [], regras: [] };
+  };
+
+  /* ---------- identidade de um destinatário ----------
+
+     O descritivo do banco muda de uma linha para outra — muda a data, o
+     CPF, o número da filial —, mas o nome de quem recebeu costuma ser o
+     mesmo. Esta chave joga fora o que varia e guarda o que identifica,
+     para o app poder lembrar a categoria que você escolheu.
+
+     "Pix - Enviado · 05/07 15:32 HS DO BRASIL LTDA." -> "hs do brasil"   */
+
+  Fin.chaveDestinatario = function (memo) {
+    var s = String(memo || '').toLowerCase();
+
+    // sem acentos, para "SAUDE" e "SAÚDE" darem na mesma
+    if (s.normalize) s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+    // o tipo da transação vem antes do "·"; o que interessa é o depois
+    var partes = s.split('·');
+    if (partes.length > 1) s = partes.slice(1).join(' ');
+
+    s = s
+      .replace(/\d{2}\/\d{2}(\/\d{2,4})?(\s+\d{2}:\d{2})?/g, ' ') // data e hora
+      .replace(/\b\d{6,}\b/g, ' ')                                // CPF, CNPJ, documento
+      .replace(/\b(ltda|s\/?a|me|epp|eireli|filial|cia)\b/g, ' ') // sufixos de empresa
+      .replace(/[*#|\-_.,;:()]+/g, ' ')
+      .replace(/\b\d+\b/g, ' ')                                   // números soltos
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // as primeiras palavras já identificam; o resto costuma ser ruído
+    return s.split(' ').filter(Boolean).slice(0, 3).join(' ');
+  };
+
+  /* ---------- regras aprendidas ----------
+     Guardadas aqui dentro pelo mesmo motivo das categorias: para
+     Fin.palpiteCategoria() enxergá-las sem receber `dados` toda vez.   */
+
+  var regrasAprendidas = [];
+
+  Fin.usarRegras = function (regras) {
+    regrasAprendidas = Array.isArray(regras) ? regras : [];
+  };
+
+  Fin.regras = function () { return regrasAprendidas; };
+
+  // A categoria que você escolheu da última vez para este destinatário.
+  Fin.regraPara = function (memo, tipo) {
+    var chave = Fin.chaveDestinatario(memo);
+    if (!chave) return null;
+    return regrasAprendidas.find(function (r) {
+      return r.chave === chave && r.type === tipo;
+    }) || null;
   };
 
   Fin.carregar = function () {
@@ -99,7 +152,8 @@ window.Fin = window.Fin || {};
         // `cats` e `pendentes` não existiam nas primeiras versões: quem já
         // usava o app continua funcionando, só sem esses recursos.
         cats:      Array.isArray(d.cats) ? d.cats : [],
-        pendentes: Array.isArray(d.pendentes) ? d.pendentes : []
+        pendentes: Array.isArray(d.pendentes) ? d.pendentes : [],
+        regras:    Array.isArray(d.regras) ? d.regras : []
       };
     } catch (e) {
       return Fin.vazio();
@@ -111,7 +165,7 @@ window.Fin = window.Fin || {};
       localStorage.setItem(CHAVE, JSON.stringify({
         tx: dados.tx, parcelas: dados.parcelas,
         goals: dados.goals, cats: dados.cats,
-        pendentes: dados.pendentes
+        pendentes: dados.pendentes, regras: dados.regras
       }));
       return true;
     } catch (e) {
