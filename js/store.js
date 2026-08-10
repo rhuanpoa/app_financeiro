@@ -17,7 +17,7 @@ window.Fin = window.Fin || {};
        3. VERSAO em sw.js (troca o cache, senão o celular abre o antigo)
      O botão "Buscar atualização" no menu existe justamente para flagrar
      quando um deles ficou para trás. */
-  Fin.VERSAO = 'v13';
+  Fin.VERSAO = 'v14';
 
   Fin.CATS = [
     { name: 'Alimentação',    color: '#d9822b' },
@@ -125,8 +125,10 @@ window.Fin = window.Fin || {};
   Fin.formsEmBranco = function () {
     var hoje = Fin.hojeISO();
     return {
-      out:     { amount: '', category: '', note: '', date: hoje, fixed: false },
-      in:      { amount: '', category: '', note: '', date: hoje, fixed: false },
+      // `repete` = por quantos meses o lançamento se repete, contando o
+      // próprio. 0 significa "sem data para acabar".
+      out:     { amount: '', category: '', note: '', date: hoje, fixed: false, repete: 0, repeteOutro: false },
+      in:      { amount: '', category: '', note: '', date: hoje, fixed: false, repete: 0, repeteOutro: false },
       parcela: { description: '', total: '', parcels: '', dueDay: '',
                  firstDue: hoje.slice(0, 7), card: '', category: '' },
       goal:    { name: '', target: '', saved: '' },

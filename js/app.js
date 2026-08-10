@@ -173,7 +173,10 @@
       category: f.category,
       note: (f.note || '').trim(),
       date: f.date || Fin.hojeISO(),
-      fixed: !!f.fixed
+      fixed: !!f.fixed,
+      // Duração da repetição em meses (0 = sem data para acabar).
+      // Só faz sentido quando `fixed` está ligado.
+      repete: f.fixed ? Math.max(0, parseInt(f.repete, 10) || 0) : 0
     });
 
     estado.forms[tipo] = Fin.formsEmBranco()[tipo];
@@ -622,10 +625,25 @@
         break;
       }
 
+      // Redesenha porque as opções de prazo aparecem e somem junto.
       case 'toggle-fixed': {
         var f = estado.forms[estado.addType];
         f.fixed = !f.fixed;
-        alvo.querySelector('.switch').classList.toggle('on', f.fixed);
+        render(true);
+        break;
+      }
+
+      case 'set-repete': {
+        var ff = estado.forms[estado.addType];
+        if (alvo.dataset.meses === 'outro') {
+          ff.repeteOutro = true;
+          // um valor de partida que não seja nenhum dos atalhos
+          if (!Number(ff.repete) || [3, 6, 12].indexOf(Number(ff.repete)) !== -1) ff.repete = 2;
+        } else {
+          ff.repeteOutro = false;
+          ff.repete = Number(alvo.dataset.meses) || 0;
+        }
+        render(true);
         break;
       }
 
@@ -738,7 +756,7 @@
 
     estado.forms[el.dataset.form][el.dataset.field] = el.value;
 
-    // Única exceção: a prévia do valor da parcela.
+    // Exceção 1: a prévia do valor da parcela.
     if (el.dataset.form === 'parcela' &&
         (el.dataset.field === 'total' || el.dataset.field === 'parcels')) {
       var pv = document.getElementById('preview-parcela');
@@ -747,7 +765,27 @@
         pv.textContent = n > 0 ? Fin.fmt(Fin.parse(estado.forms.parcela.total) / n) : '—';
       }
     }
+
+    // Exceção 2: até quando a repetição vale. Digitar "5" tem de mudar a
+    // data de fim na hora, senão o texto fica mentindo enquanto se digita.
+    if ((el.dataset.field === 'repete' || el.dataset.field === 'date') &&
+        (el.dataset.form === 'out' || el.dataset.form === 'in')) {
+      atualizarResumoPrazo(estado.forms[el.dataset.form]);
+    }
   });
+
+  function atualizarResumoPrazo(f) {
+    var el = view.querySelector('.prazo-resumo');
+    if (!el) return;
+
+    var meses = Number(f.repete) || 0;
+    var data = f.date || Fin.hojeISO();
+
+    el.innerHTML = meses > 0
+      ? 'Vale de <b>' + Fin.rotuloMes(Fin.indiceMes(Fin.paraData(data))) +
+        '</b> até <b>' + (Fin.fimDaRepeticao(data, meses) || '—') + '</b>.'
+      : 'Sem data para acabar — vale em todos os meses da previsão.';
+  }
 
   // Categoria de uma movimentação do extrato: grava sem redesenhar a lista,
   // para não perder a rolagem no meio da revisão.

@@ -36,6 +36,17 @@ lançamentos com o mesmo tipo, categoria e descrição são o mesmo compromisso,
 vale o mais recente. Sem isso, marcar o salário como fixo em dois meses faria
 o app achar que a renda dobrou — e a previsão crescia sozinha a cada mês de uso.
 
+### Por quanto tempo repete
+
+Ao ligar "repete todo mês" você escolhe a duração: **Sempre**, 3, 6, 12 meses,
+ou um número livre. O prazo conta **a partir do mês do lançamento, incluindo
+ele** — 3 meses em agosto vale para agosto, setembro e outubro. A tela mostra
+o mês de fim por extenso ("Vale de Ago/26 até Out/26") para não restar dúvida.
+
+Quando o prazo acaba, o compromisso some sozinho do "programado" e da
+previsão. Lançamentos criados antes desta opção existir não têm prazo e
+continuam valendo para sempre.
+
 ## Navegação
 
 Barra fixa embaixo com os atalhos do dia a dia — **Início**, **Previsão**, o

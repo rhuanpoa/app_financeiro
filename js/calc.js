@@ -139,6 +139,33 @@ window.Fin = window.Fin || {};
     return Object.keys(porChave).map(function (k) { return porChave[k]; });
   };
 
+  /* ---------- por quanto tempo um fixo se repete ----------
+
+     `repete` guarda a duração em meses, contando o mês do próprio
+     lançamento: 3 significa "este mês e mais dois". 0 (ou ausente, como
+     nos lançamentos criados antes desta opção existir) significa "sem
+     data para acabar".                                                */
+
+  Fin.janelaFixo = function (f) {
+    var inicio = Fin.indiceMes(Fin.paraData(f.date));
+    var n = Number(f.repete) || 0;
+    return { inicio: inicio, fim: n > 0 ? inicio + n - 1 : Infinity, meses: n };
+  };
+
+  // Um fixo vale num mês se esse mês está dentro da janela dele. Antes do
+  // mês em que foi lançado, não vale — não dá para prever o passado.
+  Fin.fixoValeEm = function (f, mes) {
+    var j = Fin.janelaFixo(f);
+    return mes >= j.inicio && mes <= j.fim;
+  };
+
+  // Rótulo do fim da repetição, para a tela poder mostrar sem ambiguidade.
+  Fin.fimDaRepeticao = function (dataISO, meses) {
+    var n = Number(meses) || 0;
+    if (n <= 0) return '';
+    return Fin.rotuloMes(Fin.indiceMes(Fin.paraData(dataISO)) + n - 1);
+  };
+
   /* ---------- resumo de um mês ----------
 
      Separa o que JÁ aconteceu do que ainda está PROGRAMADO:
@@ -192,7 +219,12 @@ window.Fin = window.Fin || {};
 
       Fin.fixosMensais(dados.tx).forEach(function (f) {
         if (jaNoMes[chaveFixo(f)]) return;      // já foi lançado neste mês
-        var l = linha(f.note || f.category, f.category, f.amount, 'todo mês');
+        if (!Fin.fixoValeEm(f, mes)) return;    // a repetição já terminou
+        var j = Fin.janelaFixo(f);
+        var marca = j.meses > 0
+          ? 'até ' + Fin.rotuloMes(j.fim)
+          : 'todo mês';
+        var l = linha(f.note || f.category, f.category, f.amount, marca);
         if (f.type === 'in') { progIn += f.amount; aindaEntra.push(l); }
         else { progOut += f.amount; aindaSai.push(l); }
       });
@@ -241,12 +273,16 @@ window.Fin = window.Fin || {};
     // Uma ocorrência por compromisso, não uma por registro: senão a
     // previsão inflaria a cada mês que você remarcasse o mesmo fixo.
     var fixos = Fin.fixosMensais(tx);
-    var fixosIn  = fixos.filter(function (t) { return t.type === 'in'; });
-    var fixosOut = fixos.filter(function (t) { return t.type === 'out'; });
+
+    // Os fixos não valem mais para sempre: cada um tem uma janela. Então
+    // o total de cada mês muda conforme os compromissos vão acabando.
+    function fixosDoMes(mes, tipo) {
+      return fixos.filter(function (f) {
+        return f.type === tipo && Fin.fixoValeEm(f, mes);
+      });
+    }
 
     var soma = function (l) { return l.reduce(function (a, t) { return a + t.amount; }, 0); };
-    var fixasEntram = soma(fixosIn);
-    var fixasSaem   = soma(fixosOut);
 
     // Média de gastos variáveis por mês: total variável ÷ meses com movimento.
     var variaveis = tx.filter(function (t) { return !t.fixed && t.type === 'out'; });
@@ -263,9 +299,13 @@ window.Fin = window.Fin || {};
     // O que compõe cada mês, para a linha poder ser aberta na tela.
     var listaFixos = function (l) {
       return l.map(function (t) {
+        var j = Fin.janelaFixo(t);
         return { nome: t.note || t.category, categoria: t.category,
-                 cor: Fin.cor(t.category), valorFmt: Fin.fmt(t.amount) };
-      }).sort(function (a, b) { return a.nome.localeCompare(b.nome); });
+                 cor: Fin.cor(t.category), valor: t.amount,
+                 valorFmt: Fin.fmt(t.amount),
+                 // avisa quando o compromisso tem prazo para acabar
+                 marca: j.meses > 0 ? 'até ' + Fin.rotuloMes(j.fim) : '' };
+      }).sort(function (a, b) { return b.valor - a.valor; });
     };
 
     /* ---- o mês corrente abre a lista ----
@@ -301,6 +341,13 @@ window.Fin = window.Fin || {};
     for (var i = 0; i < 12; i++) {
       var mes = mesAtual + 1 + i;
       var inst = parcelasNoMes(dados.parcelas, mes);
+
+      // Só os fixos que ainda estão valendo neste mês.
+      var entramNoMes = fixosDoMes(mes, 'in');
+      var saemNoMes   = fixosDoMes(mes, 'out');
+      var fixasEntram = soma(entramNoMes);
+      var fixasSaem   = soma(saemNoMes);
+
       acumulado += fixasEntram - fixasSaem - inst - mediaVar;
       var rotulo = Fin.rotuloMes(mes);
       pontos.push({ label: rotulo, v: acumulado });
@@ -317,8 +364,8 @@ window.Fin = window.Fin || {};
         balanceFmt: Fin.fmt(acumulado),
         negative: acumulado < 0,
 
-        entradasFixas: listaFixos(fixosIn),
-        saidasFixas: listaFixos(fixosOut),
+        entradasFixas: listaFixos(entramNoMes),
+        saidasFixas: listaFixos(saemNoMes),
         parcelas: dados.parcelas.map(function (p) {
           var partes = String(p.firstDue).split('-').map(Number);
           var primeiro = partes[0] * 12 + (partes[1] - 1);

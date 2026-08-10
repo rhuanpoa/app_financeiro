@@ -276,13 +276,55 @@ window.Fin = window.Fin || {};
     h += '<div class="label">Data</div>' +
          campo({ form: tipo, field: 'date', value: f.date, type: 'date' });
 
-    h += '<button class="switch-row" data-action="toggle-fixed" type="button">' +
+    h += '<button class="switch-row' + (f.fixed ? ' ligado' : '') + '" data-action="toggle-fixed" type="button">' +
            '<div>' +
              '<div class="t">Repete todo mês</div>' +
              '<div class="s">Salário, aluguel, assinaturas…</div>' +
            '</div>' +
            '<span class="switch' + (f.fixed ? ' on' : '') + '"><i></i></span>' +
          '</button>';
+
+    /* ---- por quanto tempo repete ---- */
+    if (f.fixed) {
+      var prazos = [
+        { v: 0,  r: 'Sempre' },
+        { v: 3,  r: '3 meses' },
+        { v: 6,  r: '6 meses' },
+        { v: 12, r: '12 meses' }
+      ];
+      var n = Number(f.repete) || 0;
+      var ehPreset = prazos.some(function (p) { return p.v === n; });
+      var outroAtivo = !!f.repeteOutro || (n > 0 && !ehPreset);
+
+      h += '<div class="prazo">' +
+             '<div class="label" style="margin:0 0 10px">Por quanto tempo</div>' +
+             '<div class="prazo-opcoes">' +
+               prazos.map(function (p) {
+                 var on = !outroAtivo && n === p.v;
+                 return '<button type="button" class="prazo-chip' + (on ? ' on' : '') + '" ' +
+                        'data-action="set-repete" data-meses="' + p.v + '">' + p.r + '</button>';
+               }).join('') +
+               '<button type="button" class="prazo-chip' + (outroAtivo ? ' on' : '') + '" ' +
+                 'data-action="set-repete" data-meses="outro">Outro</button>' +
+             '</div>' +
+
+             (outroAtivo
+               ? '<div class="prazo-outro">' +
+                   '<input class="field mono" inputmode="numeric" placeholder="5" ' +
+                     'value="' + esc(n > 0 ? n : '') + '" ' +
+                     'data-form="' + tipo + '" data-field="repete" style="margin:0">' +
+                   '<span>meses, contando este</span>' +
+                 '</div>'
+               : '') +
+
+             '<div class="prazo-resumo">' +
+               (n > 0
+                 ? 'Vale de <b>' + Fin.rotuloMes(Fin.indiceMes(Fin.paraData(f.date || Fin.hojeISO()))) +
+                   '</b> até <b>' + (Fin.fimDaRepeticao(f.date || Fin.hojeISO(), n) || '—') + '</b>.'
+                 : 'Sem data para acabar — vale em todos os meses da previsão.') +
+             '</div>' +
+           '</div>';
+    }
 
     h += '<button class="btn-primary" data-action="save-tx" type="button">Salvar ' +
            (entrada ? 'entrada' : 'saída') + '</button>';
