@@ -513,7 +513,7 @@
     dados.pendentes = [];
     persistir();
     render();
-    toast('Movimentações descartadas');
+    toast('Movimentações descartadas');   // aqui é o dado, não o nome da tela
   }
 
   /* ---------------------------------------------------------

@@ -11,7 +11,9 @@ sem servidor e sem cadastro — os dados ficam salvos no próprio aparelho.
 2. **Previsão** — projeção de 12 meses. Cada mês abre e mostra o que há dentro
    dele: entradas fixas, gastos fixos, parcelas e a média de variáveis.
 3. **Novo lançamento** — saída ou entrada, com categoria, data e "repete todo mês".
-4. **Movimentações** — gráficos por categoria e importação de extrato.
+4. **Análise** — gráficos por categoria, evolução mês a mês e importação de
+   extrato. (A rota interna continua `#movimentacoes`, para não quebrar
+   endereços já existentes.)
 5. **Histórico** — todos os lançamentos, agrupados por mês.
 6. **Categorias** — totais por categoria e criação de categorias próprias.
 7. **Metas** — criar, editar, guardar e retirar valor.
@@ -50,11 +52,11 @@ continuam valendo para sempre.
 ## Navegação
 
 Barra fixa embaixo com os atalhos do dia a dia — **Início**, **Previsão**, o
-botão **+**, **Extrato** e **Menu**. O botão *Menu* (e o botão redondo no canto
-do Início) abre o menu lateral, que lista todas as páginas: Movimentações,
+botão **+**, **Análise** e **Menu**. O botão *Menu* (e o botão redondo no canto
+do Início) abre o menu lateral, que lista todas as páginas: Análise,
 Histórico, Categorias, Metas, Parcelas, importar extrato e backup.
 
-A aba *Extrato* mostra um contador vermelho quando há movimentações
+A aba *Análise* mostra um contador vermelho quando há movimentações
 importadas esperando revisão.
 
 ## Estrutura
@@ -153,7 +155,7 @@ digitalizado (imagem) não funciona: não há texto para ler.
 A biblioteca de leitura de PDF (`vendor/`, ~1,5 MB) só é baixada quando você
 escolhe um PDF pela primeira vez — ela não pesa na abertura do app.
 
-O que é importado fica numa fila de revisão em *Movimentações* e **não entra no
+O que é importado fica numa fila de revisão em *Análise* e **não entra no
 saldo até você confirmar**. O arquivo é lido dentro do próprio navegador —
 nada é enviado para a internet.
 

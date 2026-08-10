@@ -254,7 +254,7 @@ window.Fin = window.Fin || {};
     if (!r.temAlgo) {
       h += '<div style="margin-top:16px">' +
              vazio('Nada neste mês',
-               'Use o <b>+</b> para registrar uma saída ou entrada, ou traga o extrato do banco em <b>Movimentações</b>.') +
+               'Use o <b>+</b> para registrar uma saída ou entrada, ou traga o extrato do banco em <b>Análise</b>.') +
            '</div>';
     }
 
@@ -922,7 +922,11 @@ window.Fin = window.Fin || {};
   };
 
   /* =========================================================
-     Movimentações
+     Análise
+
+     O identificador continua "movimentacoes" de propósito: ele é a rota
+     (#movimentacoes) e a chave do estado. Trocar quebraria os endereços
+     que já existem, sem ganho nenhum para quem usa.
      ========================================================= */
 
   Fin.telas.movimentacoes = function (v, estado) {
@@ -930,8 +934,8 @@ window.Fin = window.Fin || {};
     var h = '<div class="screen">';
 
     h += '<div class="head"><div>' +
-           '<div class="head-title">Movimentações</div>' +
-           '<div class="head-sub">Painel por categoria e o extrato do banco</div>' +
+           '<div class="head-title">Análise</div>' +
+           '<div class="head-sub">Para onde vai o seu dinheiro</div>' +
          '</div></div>';
 
     /* ---- fila de revisão ---- */
