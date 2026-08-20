@@ -17,7 +17,7 @@ window.Fin = window.Fin || {};
        3. VERSAO em sw.js (troca o cache, senão o celular abre o antigo)
      O botão "Buscar atualização" no menu existe justamente para flagrar
      quando um deles ficou para trás. */
-  Fin.VERSAO = 'v16';
+  Fin.VERSAO = 'v17';
 
   Fin.CATS = [
     { name: 'Alimentação',    color: '#d9822b' },
@@ -85,6 +85,42 @@ window.Fin = window.Fin || {};
 
   Fin.vazio = function () {
     return { tx: [], parcelas: [], goals: [], cats: [], pendentes: [], regras: [] };
+  };
+
+  /* ---------- CPF ----------
+
+     Os dois últimos dígitos do CPF são calculados a partir dos nove
+     primeiros. Conferir isso aqui pega erro de digitação antes de
+     incomodar o servidor — e antes de criar uma conta com CPF errado,
+     que depois ninguém consegue corrigir sozinho.                    */
+
+  Fin.cpfValido = function (valor) {
+    var c = String(valor || '').replace(/\D/g, '');
+    if (c.length !== 11) return false;
+
+    // 000.000.000-00, 111.111.111-11 etc. passam na conta mas não existem
+    if (/^(\d)\1{10}$/.test(c)) return false;
+
+    function digito(ate) {
+      var soma = 0, peso = ate + 1;
+      for (var i = 0; i < ate; i++) soma += parseInt(c.charAt(i), 10) * (peso - i);
+      var resto = (soma * 10) % 11;
+      return resto === 10 || resto === 11 ? 0 : resto;
+    }
+
+    return digito(9)  === parseInt(c.charAt(9), 10) &&
+           digito(10) === parseInt(c.charAt(10), 10);
+  };
+
+  Fin.soDigitos = function (v) { return String(v || '').replace(/\D/g, ''); };
+
+  // 12345678909 -> 123.456.789-09, enquanto se digita
+  Fin.formatarCPF = function (valor) {
+    var c = Fin.soDigitos(valor).slice(0, 11);
+    if (c.length <= 3) return c;
+    if (c.length <= 6) return c.slice(0, 3) + '.' + c.slice(3);
+    if (c.length <= 9) return c.slice(0, 3) + '.' + c.slice(3, 6) + '.' + c.slice(6);
+    return c.slice(0, 3) + '.' + c.slice(3, 6) + '.' + c.slice(6, 9) + '-' + c.slice(9);
   };
 
   /* ---------- identidade de um destinatário ----------

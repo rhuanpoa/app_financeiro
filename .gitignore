@@ -8,6 +8,11 @@
 *.csv
 *.xls
 *.xlsx
+*.sql
+
+# Exceção: a estrutura do banco precisa ser versionada. Ela só tem
+# definição de tabela e regras de segurança — nenhum dado de ninguém.
+!supabase/*.sql
 
 # Backups do próprio app (contêm todos os seus lançamentos)
 financas-*.json

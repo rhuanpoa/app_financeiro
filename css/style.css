@@ -1085,6 +1085,15 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
 
 .drawer-saldo.negative { color: #f0a58f; }
 
+.drawer-conta {
+  font-size: 11px;
+  color: var(--on-deep-2);
+  margin-top: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .drawer-nav { padding: 10px 12px; flex: 1; }
 
 .drawer-item {
@@ -1736,3 +1745,154 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* ---------------------------------------------------------
+   Entrada e cadastro
+
+   Tela cheia, sem barra e sem menu: ela existe antes de o app
+   existir, então não há para onde navegar.
+   --------------------------------------------------------- */
+
+.login {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding:
+    calc(var(--safe-top) + 32px)
+    22px
+    calc(var(--safe-bottom) + 32px);
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.login-marca { text-align: center; margin-bottom: 26px; }
+
+.login-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 20px;
+  background: var(--deep);
+  color: var(--on-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 10px 24px rgba(20, 52, 43, .28);
+}
+
+.login-logo svg { width: 27px; height: 27px; }
+
+.login-nome {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+.login-sub { font-size: 14px; color: var(--muted); font-weight: 600; margin-top: 3px; }
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 22px;
+}
+
+.login-campo { margin-bottom: 14px; }
+
+.login-campo label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  margin: 0 2px 8px;
+}
+
+.login-campo input {
+  width: 100%;
+  border: 1px solid var(--line-2);
+  background: var(--bg);
+  border-radius: 13px;
+  padding: 14px;
+  font-size: 16px;   /* 16px evita o zoom automático do iOS ao focar */
+  line-height: 1.2;
+  color: var(--ink);
+  outline: none;
+}
+
+.login-campo input:focus { border-color: var(--deep); }
+
+.login-dica { font-size: 11px; color: var(--muted); margin: -8px 2px 14px; }
+
+.login-botao {
+  display: block;
+  width: 100%;
+  background: var(--deep);
+  color: var(--on-deep);
+  text-align: center;
+  padding: 16px;
+  border-radius: 15px;
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 4px;
+  box-shadow: 0 8px 22px rgba(20, 52, 43, .22);
+}
+
+.login-botao[disabled] { opacity: .6; }
+
+.login-links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 14px;
+}
+
+.login-links button {
+  padding: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--deep);
+  text-align: center;
+  width: 100%;
+}
+
+.login-erro,
+.login-aviso {
+  font-size: 13px;
+  line-height: 1.5;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.login-erro  { background: #faece7; color: var(--red); }
+.login-aviso { background: #e5f2ea; color: #146a45; }
+
+.login-ajuda {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 12px;
+}
+
+.login-ajuda b { color: var(--ink); }
+
+.login-rodape {
+  font-size: 11px;
+  color: var(--faint);
+  line-height: 1.6;
+  text-align: center;
+  margin-top: 22px;
+}
+
+/* Enquanto a tela de login está de pé, nada do app aparece */
+body.deslogado .tabbar,
+body.deslogado .fab,
+body.deslogado .drawer,
+body.deslogado .drawer-overlay { display: none !important; }
+
+body.deslogado .view { padding: 0; max-width: none; }

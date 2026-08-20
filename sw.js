@@ -5,21 +5,28 @@
    ========================================================= */
 
 // Mantenha igual a Fin.VERSAO em js/store.js e a "versao" em version.json.
-var VERSAO = 'financas-v16';
+var VERSAO = 'financas-v17';
 
 var ARQUIVOS = [
   './',
   './index.html',
   './css/style.css',
+  './js/config.js',
   './js/store.js',
   './js/calc.js',
   './js/importar.js',
+  './js/auth.js',
+  './js/login.js',
   './js/screens.js',
   './js/app.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
+
+// vendor/supabase.js entra no precache porque o login acontece na
+// abertura: sem ele, o app não passa da primeira tela. São ~208 KB.
+ARQUIVOS.push('./vendor/supabase.js');
 
 // vendor/pdf.min.js e o worker (≈1,5 MB) NÃO entram aqui de propósito:
 // só quem importa um PDF precisa deles. São baixados na primeira

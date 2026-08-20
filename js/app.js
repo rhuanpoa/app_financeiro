@@ -715,6 +715,12 @@
       case 'abrir-menu': abrirMenu(); break;
       case 'fechar-menu': fecharMenu(); break;
 
+      case 'sair':
+        if (!confirm('Sair da conta? Seus lançamentos continuam neste aparelho.')) break;
+        fecharMenu();
+        Fin.auth.sair().catch(function (e) { toast(e.message); });
+        break;
+
       case 'buscar-atualizacao':  buscarAtualizacao(); break;
       case 'aplicar-atualizacao': aplicarAtualizacao(); break;
 
@@ -861,17 +867,168 @@
   });
 
   /* ---------------------------------------------------------
+     Tela de entrada
+
+     O app só existe depois que há sessão. Enquanto não houver,
+     o que aparece é o formulário — e nada de barra, menu ou
+     botão flutuante por trás dele.
+     --------------------------------------------------------- */
+
+  function mostrarLogin() {
+    appIniciado = false;
+    document.body.classList.add('deslogado');
+    view.innerHTML = Fin.login.html();
+    var primeiro = view.querySelector('input');
+    if (primeiro) primeiro.focus();
+  }
+
+  function redesenharLogin() {
+    var ativo = document.activeElement;
+    var focado = ativo && ativo.dataset ? ativo.dataset.login : null;
+    view.innerHTML = Fin.login.html();
+    // devolve o foco ao campo que estava sendo usado
+    var alvo = focado ? view.querySelector('[data-login="' + focado + '"]') : null;
+    if (alvo) {
+      alvo.focus();
+      // setSelectionRange so existe em alguns tipos de campo: em
+      // type="email" ele lanca InvalidStateError. Como esta funcao roda
+      // logo depois de marcar o botao como ocupado, a excecao interrompia
+      // o envio no meio e o botao ficava preso em "Aguarde" para sempre.
+      try { alvo.setSelectionRange(alvo.value.length, alvo.value.length); } catch (err) {}
+    }
+  }
+
+  function enviarLogin() {
+    var e = Fin.login.estado;
+    if (e.ocupado) return;
+
+    var email = (e.email || '').trim();
+    var nome = (e.nome || '').trim();
+
+    if (e.modo === 'criar') {
+      // Conferir aqui evita criar uma conta com CPF errado, que depois
+      // ninguém consegue corrigir sozinho.
+      if (nome.split(/\s+/).filter(Boolean).length < 2) {
+        e.erro = 'Informe o nome completo, com sobrenome.'; redesenharLogin(); return;
+      }
+      if (!email) { e.erro = 'Informe o e-mail.'; redesenharLogin(); return; }
+      if (!Fin.cpfValido(e.cpf)) {
+        e.erro = 'CPF inválido. Confira os números.'; redesenharLogin(); return;
+      }
+      if ((e.senha || '').length < 6) {
+        e.erro = 'A senha precisa de pelo menos 6 caracteres.'; redesenharLogin(); return;
+      }
+    }
+
+    if (!email) { e.erro = 'Informe o e-mail.'; redesenharLogin(); return; }
+
+    if (e.modo !== 'recuperar' && !e.senha) {
+      e.erro = 'Informe a senha.'; redesenharLogin(); return;
+    }
+
+    e.ocupado = true; e.erro = ''; e.aviso = '';
+    redesenharLogin();
+
+    var terminou = function () { e.ocupado = false; };
+
+    // Promise.resolve().then() em volta da chamada: assim um erro lancado
+    // de forma sincrona vira uma rejeicao normal e cai no .catch abaixo.
+    // Sem isso a excecao escaparia antes do .catch existir e o botao
+    // ficaria travado em "Aguarde" para sempre, sem dizer o motivo.
+    var acao = Promise.resolve().then(function () {
+      if (e.modo === 'criar')     return Fin.auth.criarConta(email, e.senha, nome, Fin.soDigitos(e.cpf));
+      if (e.modo === 'recuperar') return Fin.auth.recuperarSenha(email);
+      return Fin.auth.entrar(email, e.senha);
+    });
+
+    acao.then(function (r) {
+      terminou();
+      if (e.modo === 'recuperar') {
+        Fin.login.trocarModo('entrar');
+        e.email = email;
+        e.aviso = 'Enviamos um link para ' + email + '. Confira sua caixa de entrada.';
+        redesenharLogin();
+      } else if (e.modo === 'criar' && r && r.precisaConfirmar) {
+        Fin.login.trocarModo('entrar');
+        e.email = email;
+        e.senha = ''; e.nome = ''; e.cpf = '';
+        e.aviso = 'Conta criada. Confirme o e-mail enviado para ' + email + ' e depois entre.';
+        redesenharLogin();
+      }
+      // Entrou de verdade: quem troca de tela é o aoMudar, abaixo.
+    }).catch(function (erro) {
+      terminou();
+      e.erro = erro.message || 'Não consegui completar a operação.';
+      redesenharLogin();
+    });
+  }
+
+  // O formulário tem os próprios ouvintes: ele existe antes do app,
+  // quando data-action e data-nav ainda não significam nada.
+  document.addEventListener('input', function (ev) {
+    var campo = ev.target.dataset && ev.target.dataset.login;
+    if (!campo) return;
+
+    // O CPF ganha pontos e traço enquanto se digita. Como só se escreve
+    // no fim do campo, devolver o cursor ao fim não atrapalha.
+    if (campo === 'cpf') {
+      ev.target.value = Fin.formatarCPF(ev.target.value);
+    }
+
+    Fin.login.estado[campo] = ev.target.value;
+  });
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Enter') return;
+    if (!ev.target.dataset || !ev.target.dataset.login) return;
+    ev.preventDefault();
+    enviarLogin();
+  });
+
+  document.addEventListener('click', function (ev) {
+    var alvo = ev.target.closest('[data-login-acao]');
+    if (!alvo) return;
+    var acao = alvo.dataset.loginAcao;
+
+    if (acao === 'enviar') { enviarLogin(); return; }
+    if (acao === 'modo-entrar')    Fin.login.trocarModo('entrar');
+    if (acao === 'modo-criar')     Fin.login.trocarModo('criar');
+    if (acao === 'modo-recuperar') Fin.login.trocarModo('recuperar');
+    redesenharLogin();
+  });
+
+  /* ---------------------------------------------------------
      Início
      --------------------------------------------------------- */
 
-  document.getElementById('versao-app').textContent = Fin.VERSAO;
+  var appIniciado = false;
 
-  var telaInicial = (location.hash || '').replace('#', '');
-  // "mais" era a tela antiga de atalhos, hoje substituída pelo menu lateral.
-  if (telaInicial === 'mais') telaInicial = 'dash';
-  estado.screen = Fin.telas[telaInicial] ? telaInicial : 'dash';
-  history.replaceState({ screen: estado.screen }, '', '#' + estado.screen);
-  render();
+  function iniciarApp() {
+    if (appIniciado) return;
+    appIniciado = true;
+    document.body.classList.remove('deslogado');
+
+    document.getElementById('versao-app').textContent = Fin.VERSAO;
+    var contaEl = document.getElementById('drawer-conta');
+    if (contaEl) contaEl.textContent = Fin.auth.email();
+
+    var telaInicial = (location.hash || '').replace('#', '');
+    // "mais" era a tela antiga de atalhos, hoje substituída pelo menu lateral.
+    if (telaInicial === 'mais') telaInicial = 'dash';
+    estado.screen = Fin.telas[telaInicial] ? telaInicial : 'dash';
+    history.replaceState({ screen: estado.screen }, '', '#' + estado.screen);
+    render();
+  }
+
+  // Uma sessão guardada vale offline: o app abre sem internet para
+  // quem já entrou alguma vez neste aparelho.
+  Fin.auth.aoMudar(function (usuario) {
+    if (usuario) iniciarApp(); else mostrarLogin();
+  });
+
+  Fin.auth.iniciar()
+    .then(function (usuario) { if (usuario) iniciarApp(); else mostrarLogin(); })
+    .catch(function () { mostrarLogin(); });
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
