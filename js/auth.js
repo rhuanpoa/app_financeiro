@@ -37,6 +37,9 @@ window.Fin = window.Fin || {};
                                           'Este e-mail não é aceito. Use um endereço real.'],
     [/email rate limit|over_email_send_rate_limit/i,
                                           'Muitas tentativas seguidas. Espere alguns minutos.'],
+    // Sem SMTP próprio, o Supabase só entrega para membros do projeto.
+    [/email address not authorized|email_address_not_authorized/i,
+                                          'O envio de e-mails ainda não está liberado para este endereço. Avise o suporte.'],
     [/for security purposes.*(\d+) seconds/i,
                                           'Aguarde alguns segundos antes de tentar de novo.'],
     [/failed to fetch|networkerror|load failed/i,
