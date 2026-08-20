@@ -11,6 +11,13 @@ window.Fin = window.Fin || {};
 
   var esc = Fin.esc;
 
+  // Exemplos mostrados no chat quando a conversa está vazia.
+  var SUGESTOES = [
+    'Quanto gastei esse mês com mercado?',
+    'Como foi meu mês?',
+    'Qual foi meu maior gasto do ano?'
+  ];
+
   /* ---------- pedaços reaproveitados ---------- */
 
   var ICONE_FECHAR =
@@ -703,6 +710,68 @@ window.Fin = window.Fin || {};
 
     h += '<div class="section-title">Entradas</div>' +
          '<div class="stack">' + v.catsEntrada.map(linha).join('') + '</div>';
+
+    return h + '</div>';
+  };
+
+  /* =========================================================
+     Nova categoria
+     ========================================================= */
+
+  Fin.telas.chat = function (v, estado) {
+    var c = estado.chat;
+
+    var h = '<div class="screen chat-screen">';
+
+    h += '<div class="head"><div>' +
+           '<div class="head-title">Chat</div>' +
+           '<div class="head-sub">Pergunte sobre suas contas</div>' +
+         '</div></div>';
+
+    h += '<div class="chat-linha">';
+
+    // Só na conversa vazia: dão o tom do que dá para perguntar,
+    // sem obrigar ninguém a adivinhar.
+    if (!c.mensagens.length) {
+      h += '<div class="card dashed chat-vazio">' +
+             '<div class="empty-title">Pergunte do seu jeito</div>' +
+             '<div class="empty-text">Eu somo aqui no aparelho e respondo. ' +
+               'Seus lançamentos não saem do celular.</div>' +
+             '<div class="chat-sugestoes">' +
+               SUGESTOES.map(function (t) {
+                 return '<button class="chat-sugestao" type="button" ' +
+                        'data-action="chat-sugestao" data-texto="' + esc(t) + '">' +
+                        esc(t) + '</button>';
+               }).join('') +
+             '</div>' +
+           '</div>';
+    }
+
+    c.mensagens.forEach(function (m) {
+      h += '<div class="chat-bolha ' + (m.de === 'voce' ? 'minha' : 'dele') + '">' +
+             esc(m.texto) +
+           '</div>';
+    });
+
+    if (c.pendente) {
+      h += '<div class="chat-bolha dele chat-pensando"><i></i><i></i><i></i></div>';
+    }
+
+    if (c.erro) {
+      h += '<div class="chat-erro">' + esc(c.erro) + '</div>';
+    }
+
+    h += '</div>';
+
+    // O campo fica preso embaixo, acima da barra de abas.
+    h += '<form class="chat-envio" data-chat-form="1">' +
+           '<input class="chat-campo" type="text" data-chat="pergunta" ' +
+             'placeholder="Quanto gastei com..." autocomplete="off" ' +
+             'maxlength="500" value="' + esc(c.rascunho) + '"' +
+             (c.pendente ? ' disabled' : '') + '>' +
+           '<button class="chat-botao" type="submit" data-action="chat-enviar" aria-label="Enviar"' +
+             (c.pendente ? ' disabled' : '') + '>&#8593;</button>' +
+         '</form>';
 
     return h + '</div>';
   };

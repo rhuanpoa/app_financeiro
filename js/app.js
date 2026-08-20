@@ -33,12 +33,17 @@
     mesHist: null,
     // Meta sendo editada
     metaEditId: null,
+    // Conversa do chat. `mensagens` é o que aparece na tela; `input` é a
+    // mesma conversa no formato que a IA entende, incluindo as consultas
+    // que ela pediu. Some ao fechar o app: não é histórico, é conversa.
+    chat: { mensagens: [], input: [], pendente: false, erro: '', rascunho: '' },
     forms: Fin.formsEmBranco()
   };
 
   // Qual item do menu lateral acende em cada tela.
   var ITEM_DO_MENU = {
     dash: 'dash',
+    chat: 'chat',
     movimentacoes: 'movimentacoes', importar: 'importar',
     proj: 'proj',
     hist: 'hist',
@@ -51,6 +56,7 @@
   // (Parcelas, Histórico, Metas…) ficam sem nenhuma acesa — elas moram no menu.
   var ABA_DA_TELA = {
     dash: 'dash',
+    chat: 'chat',
     proj: 'proj',
     movimentacoes: 'movimentacoes', importar: 'movimentacoes'
   };
@@ -155,6 +161,50 @@
     toastEl.hidden = false;
     clearTimeout(timerToast);
     timerToast = setTimeout(function () { toastEl.hidden = true; }, 2200);
+  }
+
+
+  /* ---------------------------------------------------------
+     Chat
+     --------------------------------------------------------- */
+
+  function enviarPergunta(texto) {
+    var c = estado.chat;
+    var pergunta = String(texto || c.rascunho || '').trim();
+    if (!pergunta || c.pendente) return;
+
+    c.mensagens.push({ de: 'voce', texto: pergunta });
+    c.input = c.input.concat([Fin.chat.itemPergunta(pergunta)]);
+    c.rascunho = '';
+    c.erro = '';
+    c.pendente = true;
+    render();
+    rolarChat();
+
+    Fin.chat.perguntar(dados, c.input)
+      .then(function (r) {
+        c.pendente = false;
+        c.input = r.input;
+        c.mensagens.push({ de: 'app', texto: r.texto });
+      })
+      .catch(function (erro) {
+        c.pendente = false;
+        c.erro = erro.message || 'Nao consegui responder agora.';
+        // A pergunta sai da conversa da IA: mante-la faria a proxima
+        // tentativa reenviar uma conversa pela metade.
+        c.input = c.input.slice(0, -1);
+      })
+      .then(function () {
+        render();
+        rolarChat();
+      });
+  }
+
+  // A ultima mensagem tem de ficar visivel sozinha, como em qualquer
+  // aplicativo de conversa.
+  function rolarChat() {
+    var linha = view.querySelector('.chat-linha');
+    if (linha) window.scrollTo(0, document.body.scrollHeight);
   }
 
   /* ---------------------------------------------------------
@@ -712,6 +762,9 @@
       case 'meta-guardar':     movimentarMeta(1); break;
       case 'meta-retirar':     movimentarMeta(-1); break;
 
+      case 'chat-enviar':   enviarPergunta(); break;
+      case 'chat-sugestao': enviarPergunta(alvo.dataset.texto); break;
+
       case 'abrir-menu': abrirMenu(); break;
       case 'fechar-menu': fecharMenu(); break;
 
@@ -780,6 +833,11 @@
   // senão o teclado do celular perderia o foco a cada letra.
   view.addEventListener('input', function (ev) {
     var el = ev.target;
+    if (el.dataset && el.dataset.chat === 'pergunta') {
+      estado.chat.rascunho = el.value;
+      return;
+    }
+
     if (!el.dataset || !el.dataset.form || !el.dataset.field) return;
 
     estado.forms[el.dataset.form][el.dataset.field] = el.value;
@@ -817,6 +875,14 @@
 
   // Categoria de uma movimentação do extrato: grava sem redesenhar a lista,
   // para não perder a rolagem no meio da revisão.
+  // O <form> existe so para o Enter do teclado do celular funcionar.
+  // Sem preventDefault, enviar recarregaria a pagina e a conversa sumiria.
+  view.addEventListener('submit', function (ev) {
+    if (!ev.target.dataset || !ev.target.dataset.chatForm) return;
+    ev.preventDefault();
+    enviarPergunta();
+  });
+
   view.addEventListener('change', function (ev) {
     var el = ev.target;
     if (!el.dataset || !el.dataset.pendente) return;

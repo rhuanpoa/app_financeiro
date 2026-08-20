@@ -961,7 +961,7 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
   display: grid;
   /* minmax(0,...) e não 1fr puro: com 1fr, o rótulo mais longo alargaria a
      própria coluna e a barra ficaria torta, com o + fora do centro. */
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   align-items: center;
   max-width: 560px;
   margin: 0 auto;
@@ -1896,3 +1896,153 @@ body.deslogado .drawer,
 body.deslogado .drawer-overlay { display: none !important; }
 
 body.deslogado .view { padding: 0; max-width: none; }
+
+/* =========================================================
+   Chat
+   ========================================================= */
+
+/* A tela inteira precisa caber acima do campo de envio, que é fixo.
+   Sem esta folga a última mensagem fica escondida atrás dele. */
+.chat-screen { padding-bottom: 76px; }
+
+.chat-linha {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.chat-bolha {
+  max-width: 84%;
+  padding: 11px 14px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.45;
+  /* Endereço de banco e valor grudado quebram no meio da palavra
+     em vez de esticar a bolha para fora da tela. */
+  overflow-wrap: anywhere;
+}
+
+.chat-bolha.minha {
+  align-self: flex-end;
+  background: var(--deep);
+  color: var(--on-deep);
+  border-bottom-right-radius: 6px;
+}
+
+.chat-bolha.dele {
+  align-self: flex-start;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 6px;
+}
+
+/* Os três pontinhos enquanto a resposta não chega */
+.chat-pensando { display: flex; gap: 5px; align-items: center; padding: 15px 16px; }
+
+.chat-pensando i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+  display: block;
+  animation: chat-pulso 1.2s infinite ease-in-out;
+}
+
+.chat-pensando i:nth-child(2) { animation-delay: .18s; }
+.chat-pensando i:nth-child(3) { animation-delay: .36s; }
+
+@keyframes chat-pulso {
+  0%, 60%, 100% { opacity: .28; transform: translateY(0); }
+  30%           { opacity: 1;   transform: translateY(-3px); }
+}
+
+/* Quem prefere o sistema sem animação não vê os pontos pularem. */
+@media (prefers-reduced-motion: reduce) {
+  .chat-pensando i { animation: none; opacity: .5; }
+}
+
+.chat-erro {
+  align-self: flex-start;
+  max-width: 84%;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--red);
+  padding: 2px 4px;
+}
+
+.chat-vazio { text-align: left; }
+
+.chat-sugestoes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.chat-sugestao {
+  text-align: left;
+  padding: 10px 13px;
+  border-radius: 13px;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-sugestao:active { background: var(--track); }
+
+/* Campo de envio: colado acima da barra de abas. */
+.chat-envio {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tab-h) + var(--safe-bottom));
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 16px;
+  max-width: 560px;
+  margin: 0 auto;
+  background: rgba(244, 243, 238, .94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+}
+
+.chat-campo {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink);
+  /* 16px impede o iPhone de dar zoom sozinho ao focar o campo. */
+  font-size: 16px;
+  font-family: inherit;
+}
+
+.chat-campo:focus { outline: none; border-color: var(--deep); }
+.chat-campo:disabled { opacity: .6; }
+
+.chat-botao {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--deep);
+  color: var(--on-deep);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-botao:disabled { opacity: .45; }

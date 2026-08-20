@@ -5,7 +5,7 @@
    ========================================================= */
 
 // Mantenha igual a Fin.VERSAO em js/store.js e a "versao" em version.json.
-var VERSAO = 'financas-v17';
+var VERSAO = 'financas-v18';
 
 var ARQUIVOS = [
   './',
@@ -16,6 +16,7 @@ var ARQUIVOS = [
   './js/calc.js',
   './js/importar.js',
   './js/auth.js',
+  './js/chat.js',
   './js/login.js',
   './js/screens.js',
   './js/app.js',
