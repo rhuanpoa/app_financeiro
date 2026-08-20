@@ -200,3 +200,11 @@ dedo em cima.
 Ficam só no `localStorage` deste navegador, neste aparelho. **Não há backup
 automático.** Limpar os dados do navegador apaga tudo — use *Mais → Exportar
 backup* de vez em quando.
+
+## Licença
+
+Software proprietário — todos os direitos reservados. Ver `LICENSE`.
+
+Componentes de terceiros incluídos no repositório (pdf.js, sob Apache 2.0)
+estão relacionados em `THIRD-PARTY-NOTICES.md` e mantêm suas próprias
+licenças.
