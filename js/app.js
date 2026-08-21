@@ -221,6 +221,7 @@
     dados.tx.push({
       id: Fin.novoId(),
       atualizado_em: Fin.agora(),
+      _sujo: 1,
       type: tipo,
       amount: valor,
       category: f.category,
@@ -248,6 +249,7 @@
     dados.parcelas.push({
       id: Fin.novoId(),
       atualizado_em: Fin.agora(),
+      _sujo: 1,
       description: (f.description || '').trim() || 'Compra parcelada',
       total: total,
       parcels: n,
@@ -272,6 +274,7 @@
     dados.goals.push({
       id: Fin.novoId(),
       atualizado_em: Fin.agora(),
+      _sujo: 1,
       name: f.name.trim(),
       target: alvo,
       saved: Fin.parse(f.saved)
@@ -293,6 +296,7 @@
     dados.cats.push({
       id: Fin.novoId(),
       atualizado_em: Fin.agora(),
+      _sujo: 1,
       name: nome,
       color: f.color || Fin.PALETA[0],
       type: f.type === 'in' ? 'in' : 'out'
@@ -350,7 +354,7 @@
     dados.goals = dados.goals.map(function (g) {
       return g.id === estado.metaEditId
         ? Object.assign({}, g, { name: nome, target: alvo, saved: guardado,
-                                 atualizado_em: Fin.agora() })
+                                 atualizado_em: Fin.agora(), _sujo: 1 })
         : g;
     });
 
@@ -380,7 +384,7 @@
 
     dados.goals = dados.goals.map(function (x) {
       return x.id === g.id
-        ? Object.assign({}, x, { saved: novo, atualizado_em: Fin.agora() })
+        ? Object.assign({}, x, { saved: novo, atualizado_em: Fin.agora(), _sujo: 1 })
         : x;
     });
 
@@ -397,7 +401,7 @@
     dados.goals = dados.goals.map(function (g) {
       return g.id === id
         ? Object.assign({}, g, { saved: Math.min(g.target, g.saved + valor),
-                                 atualizado_em: Fin.agora() })
+                                 atualizado_em: Fin.agora(), _sujo: 1 })
         : g;
     });
     persistir();
@@ -544,6 +548,7 @@
         // nao conflitam, e a lapide do pendente nao afeta o lancamento.
         id: p.id,
         atualizado_em: Fin.agora(),
+        _sujo: 1,
         type: p.type,
         amount: p.amount,
         category: p.category || 'Outros',

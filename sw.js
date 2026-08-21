@@ -17,6 +17,7 @@ var ARQUIVOS = [
   './js/importar.js',
   './js/auth.js',
   './js/chat.js',
+  './js/sync.js',
   './js/login.js',
   './js/screens.js',
   './js/app.js',

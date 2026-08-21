@@ -606,6 +606,7 @@ window.Fin = window.Fin || {};
         atual.exemplo = it.memo;
         atual.id = atual.id || Fin.idDaRegra(atual);
         atual.atualizado_em = Fin.agora();
+        atual._sujo = 1;
       } else {
         var nova = {
           chave: chave,
@@ -616,6 +617,7 @@ window.Fin = window.Fin || {};
         };
         nova.id = Fin.idDaRegra(nova);
         nova.atualizado_em = Fin.agora();
+        nova._sujo = 1;
         lista.push(nova);
       }
     });

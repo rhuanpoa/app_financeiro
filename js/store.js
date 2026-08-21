@@ -117,10 +117,16 @@ window.Fin = window.Fin || {};
 
   Fin.agora = function () { return new Date().toISOString(); };
 
-  // Carimba um registro novo, ou atualiza a data de um já existente.
+  /* Carimba um registro novo, ou atualiza a data de um já existente.
+
+     O campo _sujo marca "isto ainda não foi contado ao servidor". Marcar é
+     melhor do que deduzir pela data: deduzir olhando o relógio faria
+     um aparelho com a hora atrasada criar registros com data no
+     passado, que nunca seriam enviados — e ninguém perceberia. */
   Fin.carimbar = function (registro) {
     if (!registro.id) registro.id = Fin.novoId();
     registro.atualizado_em = Fin.agora();
+    registro._sujo = 1;
     return registro;
   };
 
@@ -193,6 +199,8 @@ window.Fin = window.Fin || {};
           r.id = Fin.novoId();
         }
         if (!r.atualizado_em) r.atualizado_em = base;
+        // Tudo que já existia precisa subir na primeira sincronização.
+        r._sujo = 1;
       });
     });
 
