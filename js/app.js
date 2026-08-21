@@ -53,12 +53,12 @@
   };
 
   // Qual aba da barra de baixo acende. As telas que não têm aba própria
-  // (Parcelas, Histórico, Metas…) ficam sem nenhuma acesa — elas moram no menu.
+  // (Análise, Parcelas, Histórico, Metas…) ficam sem nenhuma acesa — elas
+  // moram no menu. São cinco colunas: mais que isso tira o + do centro.
   var ABA_DA_TELA = {
     dash: 'dash',
     chat: 'chat',
-    proj: 'proj',
-    movimentacoes: 'movimentacoes', importar: 'movimentacoes'
+    proj: 'proj'
   };
 
   /* ---------------------------------------------------------

@@ -784,8 +784,16 @@ window.Fin = window.Fin || {};
              'placeholder="Quanto gastei com..." autocomplete="off" ' +
              'maxlength="500" value="' + esc(c.rascunho) + '"' +
              (c.pendente ? ' disabled' : '') + '>' +
+           // SVG e não o caractere "↑": como texto ele herdava o
+           // text-align:left global dos botões e ficava encostado na
+           // esquerda do círculo, além de mudar de forma conforme a fonte.
            '<button class="chat-botao" type="submit" data-action="chat-enviar" aria-label="Enviar"' +
-             (c.pendente ? ' disabled' : '') + '>&#8593;</button>' +
+             (c.pendente ? ' disabled' : '') + '>' +
+             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+               'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+               '<path d="M12 19V5M6 11l6-6 6 6"/>' +
+             '</svg>' +
+           '</button>' +
          '</form>';
 
     return h + '</div>';

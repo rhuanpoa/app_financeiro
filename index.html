@@ -40,19 +40,18 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     </button>
   </div>
-  <button class="tab" data-nav="movimentacoes" type="button">
-    <span class="tab-ico">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>
-      <em class="tab-badge" id="tab-badge" hidden></em>
-    </span>
-    <span>Análise</span>
-  </button>
   <button class="tab" data-nav="chat" type="button">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4V5Z"/></svg>
     <span>Chat</span>
   </button>
+  <!-- O contador de pendências fica aqui porque Análise, onde ele morava,
+       passou a viver dentro do menu. Ele precisa continuar visível na barra:
+       é o aviso de que há lançamento importado esperando confirmação. -->
   <button class="tab" data-action="abrir-menu" type="button">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    <span class="tab-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <em class="tab-badge" id="tab-badge" hidden></em>
+    </span>
     <span>Menu</span>
   </button>
 </nav>

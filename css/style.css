@@ -961,7 +961,7 @@ input[type="month"].field::-webkit-calendar-picker-indicator {
   display: grid;
   /* minmax(0,...) e não 1fr puro: com 1fr, o rótulo mais longo alargaria a
      própria coluna e a barra ficaria torta, com o + fora do centro. */
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   max-width: 560px;
   margin: 0 auto;
@@ -2039,10 +2039,15 @@ body.deslogado .view { padding: 0; max-width: none; }
   border: 0;
   background: var(--deep);
   color: var(--on-deep);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1;
   cursor: pointer;
+  /* O flex centrado e obrigatorio: os botoes do app herdam
+     text-align:left do reset la em cima, entao sem isto o icone
+     fica encostado na esquerda do circulo. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+.chat-botao svg { width: 20px; height: 20px; }
 
 .chat-botao:disabled { opacity: .45; }
