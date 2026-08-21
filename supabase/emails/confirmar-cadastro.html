@@ -1,0 +1,52 @@
+<!--
+  Modelo do e-mail de confirmação de cadastro.
+
+  Onde colar: Supabase → Authentication → Emails → Templates →
+  "Confirm signup". Troque também o Subject para:
+
+      Confirme seu e-mail — Minhas Finanças
+
+  {{ .ConfirmationURL }} é preenchido pelo Supabase. Não mexa no nome.
+
+  O endereço aparece escrito por extenso embaixo do botão de propósito:
+  muita gente foi ensinada a não clicar em botão de e-mail, e quem lê
+  no celular não consegue passar o mouse para conferir o destino.
+-->
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#f4f3ee;padding:32px 16px;">
+  <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:18px;padding:32px 28px;">
+
+    <div style="font-size:18px;font-weight:700;color:#14342b;margin-bottom:4px;">
+      Minhas Finanças
+    </div>
+
+    <h1 style="font-size:20px;font-weight:700;color:#191c17;margin:20px 0 12px;">
+      Confirme seu e-mail
+    </h1>
+
+    <p style="font-size:15px;line-height:1.55;color:#4a4d45;margin:0 0 24px;">
+      Falta só um passo para sua conta ficar pronta. Toque no botão abaixo
+      para confirmar que este endereço é seu.
+    </p>
+
+    <a href="{{ .ConfirmationURL }}"
+       style="display:inline-block;background:#14342b;color:#f4f3ee;text-decoration:none;
+              font-size:15px;font-weight:700;padding:14px 28px;border-radius:26px;">
+      Confirmar meu e-mail
+    </a>
+
+    <p style="font-size:13px;line-height:1.5;color:#8a8c80;margin:26px 0 0;">
+      Se o botão não funcionar, copie e cole este endereço no navegador:
+    </p>
+    <p style="font-size:12px;line-height:1.5;color:#4a4d45;word-break:break-all;margin:6px 0 0;">
+      {{ .ConfirmationURL }}
+    </p>
+
+    <div style="border-top:1px solid rgba(0,0,0,.08);margin:26px 0 0;padding-top:18px;">
+      <p style="font-size:13px;line-height:1.5;color:#8a8c80;margin:0;">
+        Se não foi você que criou esta conta, ignore esta mensagem — nada
+        acontece sem essa confirmação.
+      </p>
+    </div>
+
+  </div>
+</div>
