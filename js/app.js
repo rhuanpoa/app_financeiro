@@ -164,7 +164,14 @@
     mostrarSync();
     return Fin.sync.agora(dados)
       .then(function (r) {
-        if (r && r.jaRodando) return;
+        // Ja havia uma rodada em andamento. Nao da para simplesmente
+        // desistir: aquela rodada comecou ANTES desta alteracao e nao vai
+        // leva-la. Desistir calado deixaria a mudanca parada ate um
+        // proximo evento qualquer -- que pode nao vir tao cedo.
+        // Com varias origens disparando sincronizacao (o aviso do
+        // servidor, voltar a ter rede, reabrir o app), isso deixou de ser
+        // raro.
+        if (r && r.jaRodando) { agendarSync(); return; }
 
         // Se veio coisa de outro aparelho, gravar e redesenhar: a tela
         // atual pode estar mostrando números que acabaram de mudar.
@@ -541,7 +548,13 @@
   function apagar(lista, id, msg) {
     // Fin.remover tira da lista E deixa a marca de apagado. Sem a marca,
     // o outro aparelho reenviaria o registro e ele voltaria do nada.
-    Fin.remover(dados, lista, id);
+    var saiu = Fin.remover(dados, lista, id);
+
+    // Nao anunciar sucesso sem conferir. Quando os ids viraram texto e o
+    // app ainda os convertia para numero, nada era apagado e mesmo assim
+    // aparecia "Removido" -- o defeito ficou escondido atras do aviso.
+    if (!saiu) { toast('Não consegui remover'); return; }
+
     persistir();
     render();
     toast(msg);
@@ -811,7 +824,12 @@
     if (!alvo) return;
 
     var acao = alvo.dataset.action;
-    var id = alvo.dataset.id ? Number(alvo.dataset.id) : null;
+    // TEXTO, nao numero. Os ids deixaram de ser Date.now() e viraram
+    // identificadores unicos com letras e tracos. Converter para numero
+    // dava NaN: o filtro nao casava com nada, e apagar deixou de
+    // funcionar em silencio -- o aviso "Removido" aparecia do mesmo
+    // jeito, porque ninguem conferia se algo saiu mesmo.
+    var id = alvo.dataset.id || null;
 
     if (!acao && alvo.dataset.nav) { irPara(alvo.dataset.nav); return; }
 
@@ -1040,7 +1058,7 @@
     var el = ev.target;
     if (!el.dataset || !el.dataset.pendente) return;
 
-    var id = Number(el.dataset.pendente);
+    var id = el.dataset.pendente;   // texto, pelo mesmo motivo
     var p = dados.pendentes.find(function (x) { return x.id === id; });
     if (!p) return;
 
