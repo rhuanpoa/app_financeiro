@@ -44,6 +44,10 @@ window.Fin = window.Fin || {};
                                           'Aguarde alguns segundos antes de tentar de novo.'],
     [/failed to fetch|networkerror|load failed/i,
                                           'Sem conexão com a internet.'],
+    // 504 do gateway do Supabase. Hoje quer dizer que o envio de e-mail
+    // travou: o cadastro fica esperando o SMTP e estoura.
+    [/upstream request timeout|gateway ?timeout/i,
+                                          'O servidor demorou demais para responder. Tente de novo em instantes.'],
 
     // Vêm do gatilho criar_perfil(), no banco. A unicidade do CPF é
     // garantida lá, não aqui: assim não existe consulta pública que
@@ -82,7 +86,13 @@ window.Fin = window.Fin || {};
       var caiu = false;
       var t = setTimeout(function () {
         caiu = true;
-        reject(new Error('Sem conexão com a internet. Tente de novo.'));
+        // Estourar o tempo tem duas causas bem diferentes, e dizer a
+        // errada manda a pessoa reiniciar o roteador por um problema
+        // que e do servidor. navigator.onLine separa as duas.
+        var offline = (typeof navigator !== 'undefined') && navigator.onLine === false;
+        reject(new Error(offline
+          ? 'Sem conexão com a internet. Tente de novo.'
+          : 'O servidor demorou demais para responder. Tente de novo em instantes.'));
       }, LIMITE_MS);
 
       promessa.then(function (r) {
