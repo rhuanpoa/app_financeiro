@@ -219,7 +219,8 @@
     if (!valor || !f.category) { toast('Preencha valor e categoria'); return; }
 
     dados.tx.push({
-      id: Date.now(),
+      id: Fin.novoId(),
+      atualizado_em: Fin.agora(),
       type: tipo,
       amount: valor,
       category: f.category,
@@ -245,7 +246,8 @@
     if (!total || !n || !f.category) { toast('Preencha valor, parcelas e categoria'); return; }
 
     dados.parcelas.push({
-      id: Date.now(),
+      id: Fin.novoId(),
+      atualizado_em: Fin.agora(),
       description: (f.description || '').trim() || 'Compra parcelada',
       total: total,
       parcels: n,
@@ -268,7 +270,8 @@
     if (!(f.name || '').trim() || !alvo) { toast('Preencha nome e objetivo'); return; }
 
     dados.goals.push({
-      id: Date.now(),
+      id: Fin.novoId(),
+      atualizado_em: Fin.agora(),
       name: f.name.trim(),
       target: alvo,
       saved: Fin.parse(f.saved)
@@ -288,7 +291,8 @@
     if (Fin.nomeEmUso(nome, f.type)) { toast('Já existe uma categoria com esse nome'); return; }
 
     dados.cats.push({
-      id: Date.now(),
+      id: Fin.novoId(),
+      atualizado_em: Fin.agora(),
       name: nome,
       color: f.color || Fin.PALETA[0],
       type: f.type === 'in' ? 'in' : 'out'
@@ -312,7 +316,7 @@
 
     if (!confirm('Apagar a categoria "' + cat.name + '"?')) return;
 
-    dados.cats = dados.cats.filter(function (c) { return c.id !== id; });
+    Fin.remover(dados, 'cats', id);
     persistir();
     render();
     toast('Categoria apagada');
@@ -345,7 +349,8 @@
 
     dados.goals = dados.goals.map(function (g) {
       return g.id === estado.metaEditId
-        ? Object.assign({}, g, { name: nome, target: alvo, saved: guardado })
+        ? Object.assign({}, g, { name: nome, target: alvo, saved: guardado,
+                                 atualizado_em: Fin.agora() })
         : g;
     });
 
@@ -374,7 +379,9 @@
     }
 
     dados.goals = dados.goals.map(function (x) {
-      return x.id === g.id ? Object.assign({}, x, { saved: novo }) : x;
+      return x.id === g.id
+        ? Object.assign({}, x, { saved: novo, atualizado_em: Fin.agora() })
+        : x;
     });
 
     // O formulário reflete o novo saldo e limpa o campo de movimento.
@@ -388,7 +395,10 @@
 
   function guardarNaMeta(id, valor) {
     dados.goals = dados.goals.map(function (g) {
-      return g.id === id ? Object.assign({}, g, { saved: Math.min(g.target, g.saved + valor) }) : g;
+      return g.id === id
+        ? Object.assign({}, g, { saved: Math.min(g.target, g.saved + valor),
+                                 atualizado_em: Fin.agora() })
+        : g;
     });
     persistir();
     render();
@@ -396,7 +406,9 @@
   }
 
   function apagar(lista, id, msg) {
-    dados[lista] = dados[lista].filter(function (x) { return x.id !== id; });
+    // Fin.remover tira da lista E deixa a marca de apagado. Sem a marca,
+    // o outro aparelho reenviaria o registro e ele voltaria do nada.
+    Fin.remover(dados, lista, id);
     persistir();
     render();
     toast(msg);
@@ -438,7 +450,8 @@
             goals: Array.isArray(d.goals) ? d.goals : [],
             cats: Array.isArray(d.cats) ? d.cats : [],
             pendentes: Array.isArray(d.pendentes) ? d.pendentes : [],
-            regras: Array.isArray(d.regras) ? d.regras : []
+            regras: Array.isArray(d.regras) ? d.regras : [],
+            apagados: Array.isArray(d.apagados) ? d.apagados : []
           };
           persistir();
           irPara('dash');
@@ -527,7 +540,10 @@
 
     dados.pendentes.forEach(function (p) {
       dados.tx.push({
+        // Reaproveita o id do pendente: sao colecoes diferentes, entao
+        // nao conflitam, e a lapide do pendente nao afeta o lancamento.
         id: p.id,
+        atualizado_em: Fin.agora(),
         type: p.type,
         amount: p.amount,
         category: p.category || 'Outros',
@@ -551,6 +567,7 @@
     if (!dados.regras.length) { toast('Nada aprendido ainda'); return; }
     if (!confirm('Esquecer as ' + dados.regras.length +
                  ' categorias aprendidas? Os lançamentos já feitos não mudam.')) return;
+    dados.regras.forEach(function (r) { Fin.apagou(dados, 'regras', r.id); });
     dados.regras = [];
     persistir();
     render();
@@ -746,7 +763,7 @@
       case 'del-parcela': apagar('parcelas', id, 'Compra removida'); break;
       case 'del-meta':
         if (!confirm('Apagar esta meta? O valor guardado nela some do registro.')) break;
-        dados.goals = dados.goals.filter(function (g) { return g.id !== id; });
+        Fin.remover(dados, 'goals', id);
         persistir();
         // Se a meta apagada era a que estava aberta, não dá para ficar nela.
         if (estado.screen === 'metaEdit') irPara('metas'); else render();
@@ -820,7 +837,12 @@
 
       case 'clear-all':
         if (confirm('Apagar TODOS os dados? Isso não pode ser desfeito.')) {
+          // As marcas de exclusao sobrevivem ao "apagar tudo" de proposito:
+          // sem elas, o outro aparelho devolveria tudo na sincronizacao.
+          Fin.removerTudo(dados);
+          var lapides = dados.apagados;
           dados = Fin.vazio();
+          dados.apagados = lapides;
           persistir();
           render();
           toast('Dados apagados');

@@ -604,14 +604,19 @@ window.Fin = window.Fin || {};
         atual.category = it.category;
         atual.usos = (atual.usos || 1) + 1;
         atual.exemplo = it.memo;
+        atual.id = atual.id || Fin.idDaRegra(atual);
+        atual.atualizado_em = Fin.agora();
       } else {
-        lista.push({
+        var nova = {
           chave: chave,
           type: it.type,
           category: it.category,
           exemplo: it.memo,
           usos: 1
-        });
+        };
+        nova.id = Fin.idDaRegra(nova);
+        nova.atualizado_em = Fin.agora();
+        lista.push(nova);
       }
     });
 
@@ -659,7 +664,8 @@ window.Fin = window.Fin || {};
       if (palpite.origem === 'aprendido') aprendidos++;
 
       novos.push({
-        id: Date.now() + (seq++),
+        id: Fin.novoId(),
+        atualizado_em: Fin.agora(),
         fitid: it.fitid,
         date: it.date,
         amount: it.amount,

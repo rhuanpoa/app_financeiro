@@ -17,7 +17,7 @@ window.Fin = window.Fin || {};
        3. VERSAO em sw.js (troca o cache, senão o celular abre o antigo)
      O botão "Buscar atualização" no menu existe justamente para flagrar
      quando um deles ficou para trás. */
-  Fin.VERSAO = 'v21';
+  Fin.VERSAO = 'v22';
 
   Fin.CATS = [
     { name: 'Alimentação',    color: '#d9822b' },
@@ -84,7 +84,119 @@ window.Fin = window.Fin || {};
   /* ---------- persistência ---------- */
 
   Fin.vazio = function () {
-    return { tx: [], parcelas: [], goals: [], cats: [], pendentes: [], regras: [] };
+    return { tx: [], parcelas: [], goals: [], cats: [], pendentes: [], regras: [],
+             apagados: [] };
+  };
+
+  /* =========================================================
+     Preparo para a sincronização entre aparelhos
+
+     Três coisas que o app precisava e não tinha:
+
+     1. Id que não se repete. Era Date.now(), então dois aparelhos
+        criando lançamento no mesmo milissegundo geravam o MESMO id —
+        e o servidor entenderia como um registro só, perdendo um.
+
+     2. Data de alteração. Sem ela não dá para saber qual das duas
+        versões de um registro é a mais nova.
+
+     3. Marca de apagado. Apagar removia a linha e pronto; o outro
+        aparelho, que ainda tinha a cópia, reenviaria e o lançamento
+        RESSUSCITARIA. As exclusões ficam numa lista separada, e não
+        dentro de cada registro, para as telas continuarem vendo
+        listas limpas sem precisar filtrar nada.
+     ========================================================= */
+
+  Fin.novoId = function () {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    // Navegador antigo: aleatório o bastante para não colidir na prática.
+    return 'r-' + Date.now().toString(36) + '-' +
+           Math.random().toString(36).slice(2, 10) +
+           Math.random().toString(36).slice(2, 6);
+  };
+
+  Fin.agora = function () { return new Date().toISOString(); };
+
+  // Carimba um registro novo, ou atualiza a data de um já existente.
+  Fin.carimbar = function (registro) {
+    if (!registro.id) registro.id = Fin.novoId();
+    registro.atualizado_em = Fin.agora();
+    return registro;
+  };
+
+  /* As regras aprendidas não têm id próprio: o que as identifica é o
+     destinatário mais o tipo. Derivar o id disso faz o celular e o PC
+     chegarem ao MESMO id ao aprender a mesma regra — eles se fundem em
+     vez de virarem duas regras iguais. */
+  Fin.idDaRegra = function (r) {
+    return 'regra:' + (r.type || '') + ':' + (r.chave || '');
+  };
+
+  var COLECOES = ['tx', 'parcelas', 'goals', 'cats', 'pendentes', 'regras'];
+  Fin.COLECOES = COLECOES;
+
+  // Registra que algo foi apagado, para o outro aparelho saber.
+  Fin.apagou = function (dados, colecao, id) {
+    if (!Array.isArray(dados.apagados)) dados.apagados = [];
+    // Apagar duas vezes não cria duas lápides.
+    var ja = dados.apagados.some(function (a) {
+      return a.colecao === colecao && a.id === id;
+    });
+    if (!ja) dados.apagados.push({ colecao: colecao, id: id, em: Fin.agora() });
+  };
+
+  // Apaga de uma coleção E deixa a marca, numa operação só.
+  Fin.remover = function (dados, colecao, id) {
+    var lista = dados[colecao] || [];
+    var antes = lista.length;
+    dados[colecao] = lista.filter(function (x) { return x.id !== id; });
+    if (dados[colecao].length !== antes) Fin.apagou(dados, colecao, id);
+    return antes - dados[colecao].length;
+  };
+
+  // Tudo de uma vez: "apagar todos os dados" e restaurar backup.
+  Fin.removerTudo = function (dados) {
+    COLECOES.forEach(function (c) {
+      (dados[c] || []).forEach(function (r) {
+        if (r.id) Fin.apagou(dados, c, r.id);
+      });
+    });
+  };
+
+  /* ---------- migração ----------
+     Quem já usa o app tem lançamentos com id numérico e sem data de
+     alteração. Isto acerta a casa uma vez só, na primeira abertura. */
+
+  var CHAVE_BACKUP = 'fin_v1_antes_da_sync';
+
+  Fin.precisaMigrar = function (d) {
+    if (!Array.isArray(d.apagados)) return true;
+    return COLECOES.some(function (c) {
+      return (d[c] || []).some(function (r) {
+        return !r.atualizado_em || typeof r.id !== 'string';
+      });
+    });
+  };
+
+  Fin.migrar = function (d) {
+    if (!Array.isArray(d.apagados)) d.apagados = [];
+
+    // Uma data só para tudo que já existia: sem ela, registros antigos
+    // pareceriam recém-criados e venceriam edições de verdade.
+    var base = new Date(2020, 0, 1).toISOString();
+
+    COLECOES.forEach(function (colecao) {
+      (d[colecao] || []).forEach(function (r) {
+        if (colecao === 'regras') {
+          r.id = Fin.idDaRegra(r);
+        } else if (typeof r.id !== 'string') {
+          r.id = Fin.novoId();
+        }
+        if (!r.atualizado_em) r.atualizado_em = base;
+      });
+    });
+
+    return d;
   };
 
   /* ---------- CPF ----------
@@ -181,7 +293,7 @@ window.Fin = window.Fin || {};
       var bruto = localStorage.getItem(CHAVE);
       if (!bruto) return Fin.vazio();
       var d = JSON.parse(bruto);
-      return {
+      var dados = {
         tx:       Array.isArray(d.tx) ? d.tx : [],
         parcelas: Array.isArray(d.parcelas) ? d.parcelas : [],
         goals:    Array.isArray(d.goals) ? d.goals : [],
@@ -189,11 +301,33 @@ window.Fin = window.Fin || {};
         // usava o app continua funcionando, só sem esses recursos.
         cats:      Array.isArray(d.cats) ? d.cats : [],
         pendentes: Array.isArray(d.pendentes) ? d.pendentes : [],
-        regras:    Array.isArray(d.regras) ? d.regras : []
+        regras:    Array.isArray(d.regras) ? d.regras : [],
+        apagados:  Array.isArray(d.apagados) ? d.apagados : []
       };
+
+      if (Fin.precisaMigrar(dados)) {
+        // Guarda o original ANTES de reescrever os ids. É a única cópia
+        // do formato antigo, e a migração não tem volta.
+        try {
+          if (!localStorage.getItem(CHAVE_BACKUP)) {
+            localStorage.setItem(CHAVE_BACKUP, bruto);
+          }
+        } catch (e) { /* sem espaço: seguir mesmo assim */ }
+
+        Fin.migrar(dados);
+        Fin.salvar(dados);
+      }
+
+      return dados;
     } catch (e) {
       return Fin.vazio();
     }
+  };
+
+  // Devolve o backup de antes da migração, para o caso de precisar.
+  Fin.backupAntigo = function () {
+    try { return localStorage.getItem(CHAVE_BACKUP); }
+    catch (e) { return null; }
   };
 
   Fin.salvar = function (dados) {
@@ -201,7 +335,8 @@ window.Fin = window.Fin || {};
       localStorage.setItem(CHAVE, JSON.stringify({
         tx: dados.tx, parcelas: dados.parcelas,
         goals: dados.goals, cats: dados.cats,
-        pendentes: dados.pendentes, regras: dados.regras
+        pendentes: dados.pendentes, regras: dados.regras,
+        apagados: dados.apagados || []
       }));
       return true;
     } catch (e) {
