@@ -971,6 +971,29 @@
     var email = (e.email || '').trim();
     var nome = (e.nome || '').trim();
 
+    if (e.modo === 'nova-senha') {
+      if ((e.senha || '').length < 6) {
+        e.erro = 'A senha precisa de pelo menos 6 caracteres.'; redesenharLogin(); return;
+      }
+      e.ocupado = true; e.erro = ''; e.aviso = '';
+      redesenharLogin();
+
+      Fin.auth.trocarSenha(e.senha)
+        .then(function () {
+          Fin.auth.fimDaRecuperacao();
+          e.ocupado = false; e.senha = '';
+          // A sessao do link ja e valida, entao entra direto no app.
+          iniciarApp();
+          toast('Senha alterada');
+        })
+        .catch(function (erro) {
+          e.ocupado = false;
+          e.erro = erro.message || 'Nao consegui trocar a senha.';
+          redesenharLogin();
+        });
+      return;
+    }
+
     if (e.modo === 'criar') {
       // Conferir aqui evita criar uma conta com CPF errado, que depois
       // ninguém consegue corrigir sozinho.
@@ -1088,12 +1111,26 @@
 
   // Uma sessão guardada vale offline: o app abre sem internet para
   // quem já entrou alguma vez neste aparelho.
+  // Chegou pelo link de "esqueci a senha": nao entra no app ainda.
+  // Trocar a senha e o unico caminho daqui, senao a pessoa segue com a
+  // senha antiga e volta a ficar trancada.
+  Fin.auth.aoRecuperar(function () {
+    mostrarLogin();
+    Fin.login.trocarModo('nova-senha');
+    Fin.login.estado.aviso = 'Escolha uma senha nova para sua conta.';
+    redesenharLogin();
+  });
+
   Fin.auth.aoMudar(function (usuario) {
+    if (Fin.auth.estaRecuperando()) return;
     if (usuario) iniciarApp(); else mostrarLogin();
   });
 
   Fin.auth.iniciar()
-    .then(function (usuario) { if (usuario) iniciarApp(); else mostrarLogin(); })
+    .then(function (usuario) {
+      if (Fin.auth.estaRecuperando()) return;
+      if (usuario) iniciarApp(); else mostrarLogin();
+    })
     .catch(function () { mostrarLogin(); });
 
   if ('serviceWorker' in navigator) {

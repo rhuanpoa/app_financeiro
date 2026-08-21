@@ -12,7 +12,7 @@ window.Fin = window.Fin || {};
 
   var esc = Fin.esc;
 
-  // modo: 'entrar' | 'criar' | 'recuperar'
+  // modo: 'entrar' | 'criar' | 'recuperar' | 'nova-senha'
   var estado = { modo: 'entrar', nome: '', email: '', cpf: '', senha: '',
                erro: '', aviso: '', ocupado: false };
 
@@ -38,6 +38,7 @@ window.Fin = window.Fin || {};
       var e = estado;
       var criando = e.modo === 'criar';
       var recuperando = e.modo === 'recuperar';
+      var trocando = e.modo === 'nova-senha';
 
       var h = '<div class="login">';
 
@@ -47,8 +48,9 @@ window.Fin = window.Fin || {};
              '</div>' +
              '<div class="login-nome">Minhas Finanças</div>' +
              '<div class="login-sub">' +
-               (recuperando ? 'Recuperar a senha'
-                            : criando ? 'Criar sua conta' : 'Entre para continuar') +
+               (trocando ? 'Escolha uma senha nova'
+                         : recuperando ? 'Recuperar a senha'
+                         : criando ? 'Criar sua conta' : 'Entre para continuar') +
              '</div>' +
            '</div>';
 
@@ -74,8 +76,10 @@ window.Fin = window.Fin || {};
                    'autocomplete="name" autocapitalize="words" placeholder="Como no documento"');
       }
 
-      h += campo('email', 'email', 'E-mail', e.email,
-                 'inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"');
+      if (!trocando) {
+        h += campo('email', 'email', 'E-mail', e.email,
+                   'inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"');
+      }
 
       if (criando) {
         h += campo('cpf', 'text', 'CPF', e.cpf,
@@ -83,14 +87,15 @@ window.Fin = window.Fin || {};
       }
 
       if (!recuperando) {
-        h += campo('senha', 'password', 'Senha', e.senha,
-                   'autocomplete="' + (criando ? 'new-password' : 'current-password') + '"');
-        if (criando) {
+        h += campo('senha', 'password', trocando ? 'Nova senha' : 'Senha', e.senha,
+                   'autocomplete="' + (criando || trocando ? 'new-password' : 'current-password') + '"');
+        if (criando || trocando) {
           h += '<div class="login-dica">Pelo menos 6 caracteres.</div>';
         }
       }
 
-      var rotuloBotao = recuperando ? 'Enviar link de recuperação'
+      var rotuloBotao = trocando ? 'Salvar nova senha'
+                      : recuperando ? 'Enviar link de recuperação'
                       : criando ? 'Criar conta' : 'Entrar';
 
       h += '<button class="login-botao" data-login-acao="enviar" type="button"' +
@@ -100,7 +105,9 @@ window.Fin = window.Fin || {};
 
       /* ---- alternar entre os modos ---- */
       h += '<div class="login-links">';
-      if (recuperando) {
+      if (trocando) {
+        h += '';
+      } else if (recuperando) {
         h += '<button data-login-acao="modo-entrar" type="button">Voltar para o login</button>';
       } else if (criando) {
         h += '<button data-login-acao="modo-entrar" type="button">Já tenho conta</button>';

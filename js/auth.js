@@ -114,6 +114,9 @@ window.Fin = window.Fin || {};
 
   /* ---------- ciclo de vida ---------- */
 
+  var ouvintesRecuperacao = [];
+  var recuperando = false;
+
   Fin.auth = {
     configurado: configurado,
 
@@ -137,6 +140,15 @@ window.Fin = window.Fin || {};
 
       cliente.auth.onAuthStateChange(function (evento, sessao) {
         usuarioAtual = sessao ? sessao.user : null;
+
+        // Voltar do link de recuperacao TAMBEM cria sessao. Sem separar
+        // este caso do login normal, a pessoa cairia direto no app com a
+        // senha antiga ainda valendo -- e ficaria trancada de novo depois.
+        if (evento === 'PASSWORD_RECOVERY') {
+          recuperando = true;
+          ouvintesRecuperacao.forEach(function (fn) { try { fn(); } catch (e) {} });
+          return;
+        }
         avisar();
       });
 
@@ -151,6 +163,11 @@ window.Fin = window.Fin || {};
     cliente: function () { return cliente; },
 
     aoMudar: function (fn) { ouvintes.push(fn); },
+
+    // Avisado quando a pessoa chega pelo link de "esqueci a senha".
+    aoRecuperar: function (fn) { ouvintesRecuperacao.push(fn); },
+    estaRecuperando: function () { return recuperando; },
+    fimDaRecuperacao: function () { recuperando = false; },
 
     /* ---------- operações ---------- */
 
@@ -195,6 +212,17 @@ window.Fin = window.Fin || {};
         if (r.error) throw new Error(traduzir(r.error));
         usuarioAtual = null;
       });
+    },
+
+    // Vale so logo depois de voltar do link do e-mail: o Supabase abre
+    // uma sessao temporaria, e e ela que autoriza a troca.
+    trocarSenha: function (nova) {
+      var semCliente = exigirCliente(); if (semCliente) return semCliente;
+      return comLimite(cliente.auth.updateUser({ password: nova }))
+        .then(function (r) {
+          if (r.error) throw new Error(traduzir(r.error));
+          return r.data.user;
+        });
     },
 
     recuperarSenha: function (email) {
