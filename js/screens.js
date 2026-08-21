@@ -11,6 +11,19 @@ window.Fin = window.Fin || {};
 
   var esc = Fin.esc;
 
+  /* A IA responde em markdown mesmo quando não se pede: "**R$ 1.200,00**"
+     e quebras de linha aparecem sozinhas. Como a bolha mostra texto puro,
+     os asteriscos aparecendo crus é o que o cliente veria.
+
+     A ordem aqui importa para a segurança: escapa PRIMEIRO, converte
+     DEPOIS. Assim o único HTML que sobra é o que esta função criou —
+     nada que veio de fora vira marcação. */
+  function textoChat(t) {
+    return esc(t)
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+  }
+
   // Exemplos mostrados no chat quando a conversa está vazia.
   var SUGESTOES = [
     'Quanto gastei esse mês com mercado?',
@@ -748,8 +761,10 @@ window.Fin = window.Fin || {};
     }
 
     c.mensagens.forEach(function (m) {
+      // A minha pergunta vai só escapada: markdown faz sentido apenas
+      // no que a IA escreveu.
       h += '<div class="chat-bolha ' + (m.de === 'voce' ? 'minha' : 'dele') + '">' +
-             esc(m.texto) +
+             (m.de === 'voce' ? esc(m.texto) : textoChat(m.texto)) +
            '</div>';
     });
 

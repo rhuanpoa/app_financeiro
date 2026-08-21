@@ -70,10 +70,17 @@ const FERRAMENTAS = [
   }
 ];
 
+// Esta lista tem de conter TODO cabeçalho que o supabase-js envia. Se
+// faltar um, o navegador reprova a checagem prévia e o app recebe um
+// "Failed to fetch" sem explicação — enquanto o curl, que não faz essa
+// checagem, funciona normalmente e dá a impressão de que está tudo bem.
+// Faltava 'apikey' aqui, e era exatamente isso que derrubava o chat.
 const CORS = {
   'Access-Control-Allow-Origin': Deno.env.get('ORIGEM_PERMITIDA') || '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  'Access-Control-Allow-Headers':
+    'authorization, apikey, content-type, x-client-info, x-supabase-api-version',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400'
 };
 
 function json(corpo: unknown, status = 200) {

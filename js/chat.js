@@ -117,7 +117,7 @@ window.Fin = window.Fin || {};
         // aparelho. Categoria, valor e data respondem "qual foi meu maior
         // gasto" quase tao bem, e sao dados que a propria pessoa escolheu.
         return {
-          data: t.date,
+          data: dataBR(t.date),
           valor: Number(t.amount) || 0,
           categoria: t.category || 'Outros'
         };
@@ -160,6 +160,15 @@ window.Fin = window.Fin || {};
         })
     };
   };
+
+  // 'AAAA-MM-DD' vira 'DD/MM/AAAA'. A IA repete na resposta o que recebe,
+  // entao mandar a data crua faz sair "no dia 2026-08-05" para quem le em
+  // portugues. O filtro da consulta continua em AAAA-MM-DD; isto e so o
+  // que a IA le de volta.
+  function dataBR(iso) {
+    var p = String(iso || '').split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(iso || '');
+  }
 
   // Centavos, sem lixo de ponto flutuante (0.1 + 0.2 = 0.30000000000000004).
   function arred(n) { return Math.round((Number(n) || 0) * 100) / 100; }
