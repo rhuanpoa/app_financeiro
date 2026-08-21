@@ -320,6 +320,70 @@ window.Fin = window.Fin || {};
     return proximo(0);
   }
 
+
+  /* ---------- aviso instantâneo ----------
+
+     Sem isto o outro aparelho só descobre a novidade na próxima
+     rodada. Com isto o servidor avisa no instante em que a linha muda.
+
+     O aviso NÃO substitui a sincronização normal: ele só chega enquanto
+     o app está aberto e conectado. O que aconteceu com o aparelho
+     desligado continua vindo pela rodada comum — por isso, toda vez que
+     a escuta (re)conecta, pedimos uma rodada: é justamente aí que pode
+     ter ficado buraco.                                                */
+
+  var canal = null;
+
+  Fin.sync.ouvir = function (dados, aoMudar, aoReconectar) {
+    var cliente = Fin.auth && Fin.auth.cliente && Fin.auth.cliente();
+    var eu = Fin.auth.usuario() && Fin.auth.usuario().id;
+    if (!cliente || !eu) return;
+
+    Fin.sync.parar();
+
+    canal = cliente
+      .channel('registros-' + eu)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'registros',
+        // Só as minhas linhas. O RLS já garante isso do lado do
+        // servidor; o filtro evita receber e descartar à toa.
+        filter: 'usuario=eq.' + eu
+      }, function (aviso) {
+        var linha = aviso && aviso.new;
+        if (!linha || !linha.colecao) return;
+
+        var mudou = aplicar(dados, {
+          colecao: linha.colecao,
+          id: linha.id,
+          dados: linha.dados,
+          apagado: !!linha.apagado
+        });
+
+        // O eco da nossa própria gravação chega aqui também. Não é
+        // problema: aplicar() compara as datas e devolve 0 quando o
+        // que chegou não é mais novo do que já temos.
+        if (mudou && typeof aoMudar === 'function') aoMudar(mudou);
+      })
+      .subscribe(function (estado) {
+        if (estado === 'SUBSCRIBED' && typeof aoReconectar === 'function') {
+          aoReconectar();
+        }
+      });
+  };
+
+  Fin.sync.parar = function () {
+    if (!canal) return;
+    try {
+      var cliente = Fin.auth && Fin.auth.cliente && Fin.auth.cliente();
+      if (cliente) cliente.removeChannel(canal);
+    } catch (e) {}
+    canal = null;
+  };
+
+  Fin.sync.escutando = function () { return !!canal; };
+
   function traduzir(erro) {
     var m = String((erro && erro.message) || erro || '');
     if (/failed to fetch|networkerror|load failed/i.test(m)) {

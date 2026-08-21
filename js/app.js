@@ -197,6 +197,7 @@
 
     function terminar() {
       fecharMenu();
+      Fin.sync.parar();
       dados = Fin.vazio();
       Fin.usarCategorias(dados.cats);
       Fin.usarRegras(dados.regras);
@@ -1273,8 +1274,38 @@
     }
 
     mostrarSync();
-    sincronizar(false);
+    sincronizar(false).then(escutarOutrosAparelhos);
   }
+
+  /* O servidor avisa assim que algo muda em outro aparelho, e o
+     lancamento aparece sozinho na tela -- sem esperar a proxima rodada. */
+  function escutarOutrosAparelhos() {
+    Fin.sync.ouvir(
+      dados,
+      function () {
+        // Chegou coisa de outro aparelho: gravar e redesenhar. A tela
+        // aberta pode estar mostrando numeros que acabaram de mudar.
+        Fin.usarCategorias(dados.cats);
+        Fin.usarRegras(dados.regras);
+        Fin.salvar(dados);
+        render(true);
+        mostrarSync();
+      },
+      function () {
+        // A escuta (re)conectou. O que aconteceu enquanto ela estava fora
+        // nao foi avisado -- e justamente aqui que pode ter ficado buraco.
+        sincronizar(false);
+      }
+    );
+  }
+
+  /* Voltar a ter rede, ou voltar para o app, sao os dois momentos em que
+     e mais provavel existir novidade esperando. */
+  window.addEventListener('online', function () { sincronizar(false); });
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) sincronizar(false);
+  });
 
   // Uma sessão guardada vale offline: o app abre sem internet para
   // quem já entrou alguma vez neste aparelho.
