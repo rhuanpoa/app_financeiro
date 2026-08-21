@@ -2051,3 +2051,43 @@ body.deslogado .view { padding: 0; max-width: none; }
 .chat-botao svg { width: 20px; height: 20px; }
 
 .chat-botao:disabled { opacity: .45; }
+
+/* ---------------------------------------------------------
+   Estado da sincronização, no rodapé do menu
+   --------------------------------------------------------- */
+
+.sync-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.sync-estado {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  /* "Os dados deste aparelho são de outra conta…" é a frase mais longa
+     que aparece aqui; sem isso ela empurraria o botão para fora. */
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.sync-estado.bom  { color: var(--green); }
+.sync-estado.ruim { color: var(--red); }
+.sync-estado.indo { color: var(--ink-soft); }
+
+.sync-linha button {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--deep);
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: #eef1ea;
+  flex: none;
+}
+
+.sync-linha button[disabled] { opacity: .55; }

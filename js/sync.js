@@ -30,6 +30,7 @@ window.Fin = window.Fin || {};
   'use strict';
 
   var CHAVE_MARCADOR = 'fin_sync_marcador';
+  var CHAVE_DONO     = 'fin_sync_dono';
 
   // Ao pedir "o que mudou depois de X", voltamos um pouco no tempo.
   // Dois aparelhos gravando quase juntos podem receber horas muito
@@ -62,9 +63,37 @@ window.Fin = window.Fin || {};
     catch (e) { /* modo privado: sincroniza tudo de novo na proxima */ }
   }
 
-  // Usado ao trocar de conta: os dados do servidor são de outra pessoa.
+  /* ---------- de quem são os dados que estão aqui ----------
+
+     Sem isto, sair e entrar com outra conta no mesmo aparelho misturaria
+     os lançamentos das duas pessoas: os dados que sobraram aqui seriam
+     enviados como se fossem da conta nova. Num app de dinheiro isso é
+     grave, e não daria para desfazer.                                  */
+
+  Fin.sync.dono = function () {
+    try { return localStorage.getItem(CHAVE_DONO); }
+    catch (e) { return null; }
+  };
+
+  Fin.sync.definirDono = function (id) {
+    try { if (id) localStorage.setItem(CHAVE_DONO, id); }
+    catch (e) {}
+  };
+
+  // Ao sair da conta: nada aqui vale mais para a próxima pessoa.
   Fin.sync.esquecerMarcador = function () {
-    try { localStorage.removeItem(CHAVE_MARCADOR); } catch (e) {}
+    try {
+      localStorage.removeItem(CHAVE_MARCADOR);
+      localStorage.removeItem(CHAVE_DONO);
+    } catch (e) {}
+  };
+
+  // Há algo aqui que o servidor ainda não sabe?
+  Fin.sync.temPendente = function (dados) {
+    if ((dados.apagados || []).length) return true;
+    return Fin.COLECOES.some(function (c) {
+      return (dados[c] || []).some(function (r) { return !!r._sujo; });
+    });
   };
 
   function comFolga(iso) {
@@ -198,6 +227,16 @@ window.Fin = window.Fin || {};
     if (!cliente || !Fin.auth.usuario()) {
       return Promise.reject(new Error('Entre na sua conta para sincronizar.'));
     }
+
+    var eu = Fin.auth.usuario().id;
+    var dono = Fin.sync.dono();
+    if (dono && eu && dono !== eu) {
+      // Nao enviar: estes dados sao de outra conta. Quem limpa e o app,
+      // ao trocar de conta -- aqui so barramos para nao vazar.
+      return Promise.reject(new Error(
+        'Os dados deste aparelho são de outra conta. Saia e entre de novo.'));
+    }
+    Fin.sync.definirDono(eu);
 
     e.rodando = true;
     e.erro = '';

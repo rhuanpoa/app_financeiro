@@ -104,6 +104,133 @@
     });
   }
 
+
+  /* ---------------------------------------------------------
+     Sincronização
+     --------------------------------------------------------- */
+
+  // Depois de mexer em algo, esperar um pouco antes de enviar. Sem isso,
+  // confirmar 40 lançamentos de um extrato dispararia 40 sincronizações.
+  var ESPERA_MS = 2500;
+  var timerSync = null;
+
+  function mostrarSync() {
+    var el = document.getElementById('sync-estado');
+    var botao = document.getElementById('btn-sync');
+    if (!el) return;
+
+    var e = Fin.sync.estado;
+    var classe = 'sync-estado';
+    var texto;
+
+    if (e.rodando) {
+      texto = 'Sincronizando…';
+      classe += ' indo';
+    } else if (e.erro) {
+      texto = e.erro;
+      classe += ' ruim';
+    } else if (e.ultimoOk) {
+      texto = 'Sincronizado ' + faz(e.ultimoOk);
+      classe += ' bom';
+    } else if (Fin.sync.temPendente(dados)) {
+      texto = 'Ainda não sincronizado';
+    } else {
+      texto = 'Sincronizado';
+      classe += ' bom';
+    }
+
+    el.textContent = texto;
+    el.className = classe;
+    if (botao) botao.disabled = e.rodando;
+  }
+
+  function faz(iso) {
+    var seg = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+    if (seg < 60) return 'agora';
+    var min = Math.round(seg / 60);
+    if (min < 60) return 'há ' + min + ' min';
+    var h = Math.round(min / 60);
+    if (h < 24) return 'há ' + h + 'h';
+    return 'há ' + Math.round(h / 24) + ' dias';
+  }
+
+  /* Uma rodada. `aviso` faz falhar em voz alta — só quando a pessoa
+     pediu, clicando. No automático o erro fica calado: perder a rede é
+     comum, os dados estão salvos aqui, e um alerta a cada tentativa
+     seria só barulho. */
+  function sincronizar(aviso) {
+    if (!Fin.auth.usuario()) return Promise.resolve();
+
+    mostrarSync();
+    return Fin.sync.agora(dados)
+      .then(function (r) {
+        if (r && r.jaRodando) return;
+
+        // Se veio coisa de outro aparelho, gravar e redesenhar: a tela
+        // atual pode estar mostrando números que acabaram de mudar.
+        if (r && (r.baixados || r.enviados)) {
+          Fin.usarCategorias(dados.cats);
+          Fin.usarRegras(dados.regras);
+          Fin.salvar(dados);
+        }
+        if (r && r.baixados) render(true);
+
+        mostrarSync();
+        if (aviso) {
+          toast(r && r.baixados
+            ? r.baixados + (r.baixados === 1 ? ' novidade recebida' : ' novidades recebidas')
+            : 'Tudo sincronizado');
+        }
+      })
+      .catch(function (erro) {
+        mostrarSync();
+        if (aviso) toast(erro.message || 'Não consegui sincronizar');
+      });
+  }
+
+  /* Sair mudou de significado. Antes os lançamentos eram deste aparelho
+     e ficavam aqui. Agora eles são da CONTA — e deixá-los para trás faria
+     a próxima pessoa que entrasse neste aparelho enviá-los como se
+     fossem dela. Então: envia o que falta, e só depois limpa. */
+  function sairDaConta() {
+    var pendente = Fin.sync.temPendente(dados);
+
+    function terminar() {
+      fecharMenu();
+      dados = Fin.vazio();
+      Fin.usarCategorias(dados.cats);
+      Fin.usarRegras(dados.regras);
+      Fin.salvar(dados);
+      Fin.sync.esquecerMarcador();
+      Fin.auth.sair().catch(function (e) { toast(e.message); });
+    }
+
+    if (!pendente) {
+      if (!confirm('Sair da conta? Seus lançamentos ficam guardados na conta ' +
+                   'e voltam quando você entrar de novo.')) return;
+      return terminar();
+    }
+
+    // Há coisa não enviada: tentar antes de descartar.
+    toast('Salvando na sua conta…');
+    sincronizar(false).then(function () {
+      if (Fin.sync.temPendente(dados)) {
+        if (!confirm('Não consegui salvar as últimas mudanças na sua conta. ' +
+                     'Se sair agora, elas se perdem. Sair mesmo assim?')) return;
+      } else if (!confirm('Sair da conta? Tudo já está salvo na sua conta.')) {
+        return;
+      }
+      terminar();
+    });
+  }
+
+  function agendarSync() {
+    if (!Fin.auth.usuario()) return;
+    clearTimeout(timerSync);
+    timerSync = setTimeout(function () { sincronizar(false); }, ESPERA_MS);
+    mostrarSync();
+  }
+
   /* ---------------------------------------------------------
      Menu lateral
      --------------------------------------------------------- */
@@ -144,6 +271,7 @@
     if (!Fin.salvar(dados)) {
       toast('Não consegui salvar neste navegador');
     }
+    agendarSync();
   }
 
   function irPara(tela, push) {
@@ -790,12 +918,9 @@
       case 'abrir-menu': abrirMenu(); break;
       case 'fechar-menu': fecharMenu(); break;
 
-      case 'sair':
-        if (!confirm('Sair da conta? Seus lançamentos continuam neste aparelho.')) break;
-        fecharMenu();
-        Fin.auth.sair().catch(function (e) { toast(e.message); });
-        break;
+      case 'sair': sairDaConta(); break;
 
+      case 'sincronizar':         sincronizar(true); break;
       case 'buscar-atualizacao':  buscarAtualizacao(); break;
       case 'aplicar-atualizacao': aplicarAtualizacao(); break;
 
@@ -1134,6 +1259,21 @@
     estado.screen = Fin.telas[telaInicial] ? telaInicial : 'dash';
     history.replaceState({ screen: estado.screen }, '', '#' + estado.screen);
     render();
+
+    // Os dados aqui podem ser de outra conta que usou este aparelho.
+    // Nesse caso NAO da para fundir: seria misturar o dinheiro de duas
+    // pessoas. Comeca limpo e baixa o que e desta conta.
+    var eu = Fin.auth.usuario() && Fin.auth.usuario().id;
+    var dono = Fin.sync.dono();
+    if (dono && eu && dono !== eu) {
+      dados = Fin.vazio();
+      Fin.sync.esquecerMarcador();
+      Fin.salvar(dados);
+      render();
+    }
+
+    mostrarSync();
+    sincronizar(false);
   }
 
   // Uma sessão guardada vale offline: o app abre sem internet para
