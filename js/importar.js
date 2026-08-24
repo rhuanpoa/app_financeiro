@@ -497,8 +497,24 @@ window.Fin = window.Fin || {};
           }
 
           var rotulo = contaDoExtrato(linhas);
-          var itens = montarLancamentos(linhas, rotulo);
-          var modo = 'PDF';
+          var itens, modo;
+
+          // Fatura antes de extrato: os leitores de fatura sao especificos
+          // e so reconhecem o proprio banco, entao um extrato nunca cai
+          // neles por engano. O contrario nao vale -- o leitor generico
+          // aceita quase tudo e faria uma leitura ruim da fatura.
+          if (ehNubank(linhas)) {
+            itens = faturaNubank(linhas, rotulo || 'Cartão Nubank');
+            modo = 'Fatura Nubank';
+          } else if (ehCaixa(linhas)) {
+            itens = faturaCaixa(linhas, rotulo || 'Cartão Caixa');
+            modo = 'Fatura Caixa';
+          }
+
+          if (!itens || !itens.length) {
+            itens = montarLancamentos(linhas, rotulo);
+            modo = 'PDF';
+          }
 
           if (!itens.length) {
             itens = modoGenerico(linhas, rotulo);
@@ -566,11 +582,19 @@ window.Fin = window.Fin || {};
   var COM_PALAVRA = /\b(?:parc(?:ela)?s?\.?|presta[çc][aã]o)\s*:?\s*(\d{1,2})\s*(?:\/|\s+de\s+)\s*(\d{1,2})\b/i;
   var NO_FIM      = /(?:^|[\s(\-])(\d{1,2})\s*\/\s*(\d{1,2})\s*\)?\s*$/;
 
+  /* A Caixa escreve a parcela com espaço: "MP EMAGSAUL 04 06".
+     Isso é bem mais ambíguo que a barra, então aqui exigimos os dois
+     números com DOIS dígitos, como a Caixa sempre escreve — assim
+     "LOJA 5 10" fica de fora e "LOJA 05 10" entra. */
+  var SEPARADO    = /(?:^|\s)(\d{2})\s+(\d{2})\s*$/;
+
   Fin.lerParcelaDoMemo = function (memo) {
     var s = String(memo || '').trim();
     if (!s) return null;
 
     var m = s.match(COM_PALAVRA) || s.match(NO_FIM);
+    var porEspaco = false;
+    if (!m) { m = s.match(SEPARADO); porEspaco = !!m; }
     if (!m) return null;
 
     var numero = parseInt(m[1], 10);
@@ -578,7 +602,13 @@ window.Fin = window.Fin || {};
 
     // 1/1 não é parcelamento, é compra à vista escrita de outro jeito.
     // Acima de 48 não existe na prática e provavelmente é outra coisa.
-    if (!(total >= 2 && total <= 48)) return null;
+    //
+    // O formato com espaço ("MERCADO 12 34") é o mais fácil de
+    // confundir com número de loja ou código, então recebe um teto
+    // mais baixo: parcelamento acima de 24 vezes quase não existe, e
+    // aceitar até 48 aqui transformaria códigos soltos em parcelas.
+    var teto = porEspaco ? 24 : 48;
+    if (!(total >= 2 && total <= teto)) return null;
     if (!(numero >= 1 && numero <= total)) return null;
 
     // A descrição sem o "3/12" no fim: é ela que identifica a compra
@@ -631,6 +661,183 @@ window.Fin = window.Fin || {};
   Fin.ehCreditoDaFatura = function (memo) {
     return CREDITO_NA_FATURA.test(String(memo || ''));
   };
+
+  /* =========================================================
+     Leitura da fatura em PDF
+
+     Os dois bancos que estudei montam a página de jeitos
+     completamente diferentes:
+
+       Nubank — tudo numa linha, em colunas:
+         [x111]03 SET   [x175]Dm *Spotify   [x531]34,90
+
+       Caixa — duas linhas por transação:
+         [x16]13/05 [x260]76,23
+         [x16]MP EMAGSAUL 04 06
+
+     Por isso são dois leitores, e não um genérico com remendos.
+     ========================================================= */
+
+  var MESES_ABREV = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6,
+                      jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12 };
+
+  function semAcento(s) {
+    s = String(s || '').toLowerCase();
+    return s.normalize ? s.normalize('NFD').replace(/[^\x00-\x7f]/g, '') : s;
+  }
+
+  function textoDaLinha(l) {
+    return l.itens.map(function (i) { return i.t; }).join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function valorBR(s) {
+    var n = parseFloat(String(s).replace(/\./g, '').replace(',', '.'));
+    return isNaN(n) ? null : n;
+  }
+
+  /* Lançamentos que NÃO são compra.
+
+     Descoberto conferindo contra o resumo da própria fatura: somando
+     tudo dava R$ 2.367,46, e o "Total de compras" declarado era
+     R$ 2.328,14 — exatamente os juros e o IOF de rotativo a mais.
+
+     Pagamento e rotativo ficam de fora porque não são gasto: são o
+     dinheiro entrando para quitar, e a máquina de carregar a dívida
+     para o mês seguinte. Contá-los inflaria o gasto do mês. */
+  var NAO_E_COMPRA =
+    /^(pagamento em|pagamento recebido|cr[ée]dito de rotativo|saldo em rotativo|saldo anterior|estorno)/i;
+
+  // Juros e IOF são custo de verdade: entram como gasto, mas separados
+  // das compras, porque é isso que a fatura declara.
+  var ENCARGO = /^(juros|iof|multa|anuidade|mora)\b/i;
+
+  /* ---------- Nubank ---------- */
+
+  function ehNubank(linhas) {
+    var texto = linhas.slice(0, 60).map(textoDaLinha).join(' ');
+    return /nu pagamentos/i.test(texto) ||
+           (/TRANSA[ÇC][ÕO]ES/i.test(texto) && /VALORES EM R\$/i.test(texto));
+  }
+
+  // "FATURA 10 OUT 2023" no cabeçalho dá o ano de referência.
+  function anoDaFaturaNubank(linhas) {
+    for (var i = 0; i < linhas.length; i++) {
+      var t = textoDaLinha(linhas[i]);
+      var m = t.match(/FATURA\s+\d{1,2}\s+([A-Za-zÇ]{3})\s+(\d{4})/i);
+      if (m) return { mes: MESES_ABREV[semAcento(m[1])] || 0, ano: parseInt(m[2], 10) };
+    }
+    return null;
+  }
+
+  function faturaNubank(linhas, rotulo) {
+    var ref = anoDaFaturaNubank(linhas);
+    var itens = [];
+
+    linhas.forEach(function (l) {
+      if (l.itens.length < 3) return;
+
+      var data = null, desc = [], valor = null;
+
+      l.itens.forEach(function (it) {
+        // A data fica na primeira coluna; a continuação "Total a pagar:"
+        // começa em x≈195 e não tem data, então cai fora sozinha.
+        if (!data && it.x < 140 && /^\d{1,2}\s+[A-Za-zÇ]{3}$/.test(it.t)) { data = it.t; return; }
+        if (it.x > 480 && /^[\d.]+,\d{2}$/.test(it.t)) { valor = it.t; return; }
+        if (it.x >= 140 && it.x <= 480) desc.push(it.t);
+      });
+
+      if (!data || !valor) return;
+
+      var memo = desc.join(' ').replace(/\s+/g, ' ').trim();
+      if (!memo) return;
+
+      var v = valorBR(valor);
+      if (v === null || v === 0) return;
+
+      var p = data.split(/\s+/);
+      var dia = parseInt(p[0], 10);
+      var mes = MESES_ABREV[semAcento(p[1])];
+      if (!dia || !mes) return;
+
+      // Sem ano na linha. A fatura de janeiro traz compras de dezembro:
+      // mês maior que o da fatura significa ano anterior.
+      var ano = ref ? (mes > ref.mes ? ref.ano - 1 : ref.ano) : new Date().getFullYear();
+
+      itens.push(montarDaFatura(memo, v, ano, mes, dia, rotulo));
+    });
+
+    return itens.filter(Boolean);
+  }
+
+  /* ---------- Caixa ---------- */
+
+  function ehCaixa(linhas) {
+    var texto = linhas.slice(0, 80).map(textoDaLinha).join(' ');
+    return /movimenta[çc][õo]es nacionais/i.test(texto) ||
+           /caixa econ[ôo]mica/i.test(texto);
+  }
+
+  function faturaCaixa(linhas, rotulo) {
+    var itens = [];
+    var hoje = new Date();
+
+    for (var i = 0; i < linhas.length; i++) {
+      var t = textoDaLinha(linhas[i]);
+
+      // "13/05 76,23" ou "14/08 0,02C" — o C no fim marca crédito.
+      var m = t.match(/^(\d{2})\/(\d{2})\s+([\d.]+,\d{2})\s*([CD])?$/);
+      if (!m) continue;
+
+      // A descrição vem na linha SEGUINTE, não na mesma.
+      var memo = i + 1 < linhas.length ? textoDaLinha(linhas[i + 1]) : '';
+      if (!memo || /^\d{2}\/\d{2}\s/.test(memo)) continue;
+      i++;
+
+      var v = valorBR(m[3]);
+      if (v === null || v === 0) continue;
+
+      var dia = parseInt(m[1], 10), mes = parseInt(m[2], 10);
+      if (!dia || !mes || mes > 12) continue;
+
+      // Esta fatura não traz o ano em lugar nenhum. Compra em mês
+      // adiante do atual só pode ser do ano passado.
+      var ano = mes > (hoje.getMonth() + 1) ? hoje.getFullYear() - 1 : hoje.getFullYear();
+
+      var credito = m[4] === 'C';
+      itens.push(montarDaFatura(memo, v, ano, mes, dia, rotulo, credito));
+    }
+
+    return itens.filter(Boolean);
+  }
+
+  /* ---------- comum aos dois ---------- */
+
+  // A Caixa marca credito com "C" depois do valor, mas nem sempre: um
+  // "AJUSTE CRED PARC S JUROS" vem sem marca nenhuma e mesmo assim e
+  // dinheiro voltando. A descricao tambem conta.
+  var CREDITO_PELO_TEXTO =
+    /\b(ajuste\s*cr[ée]d|estorno|cr[ée]dito|devolu[çc][aã]o|reembolso)/i;
+
+  function montarDaFatura(memo, valor, ano, mes, dia, rotulo, credito) {
+    if (NAO_E_COMPRA.test(memo)) return null;
+    if (!credito && CREDITO_PELO_TEXTO.test(memo)) credito = true;
+
+    var d = ano + '-' + (mes < 10 ? '0' : '') + mes + '-' + (dia < 10 ? '0' : '') + dia;
+
+    return {
+      // Crédito na fatura (estorno, ajuste) volta como entrada.
+      type: credito ? 'in' : 'out',
+      amount: Math.abs(valor),
+      date: d,
+      memo: memo,
+      conta: rotulo,
+      // Marca a origem: a tela de confirmação usa para explicar que
+      // isto veio de uma fatura, e não do extrato da conta.
+      fatura: true,
+      encargo: ENCARGO.test(memo) || undefined,
+      fitid: chaveSintetica(d, credito ? valor : -valor, memo)
+    };
+  }
 
   Fin.palpiteDetalhado = function (memo, tipo) {
     var texto = String(memo || '').toLowerCase();
