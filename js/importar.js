@@ -540,6 +540,98 @@ window.Fin = window.Fin || {};
 
   // Sugere uma categoria pelo descritivo, dizendo de onde veio o palpite.
   // Só devolve nome que exista de verdade naquele tipo.
+  /* =========================================================
+     Fatura de cartão de crédito
+
+     Duas coisas que só existem em fatura e não em extrato:
+
+     1. A compra parcelada, escrita dentro da descrição:
+        "MAGAZ LUIZA PARC 03/12". O app já tem uma tela de
+        Parcelas que alimenta a Previsão — vale transformar.
+
+     2. O pagamento da fatura, que aparece no EXTRATO da conta
+        corrente. Se a pessoa importar os dois, o mesmo dinheiro
+        é contado duas vezes: uma nas compras da fatura, outra
+        no pagamento. Quem decide é ela, na tela de confirmação.
+     ========================================================= */
+
+  /* Acha "3/12" e variantes dentro da descrição.
+
+     O risco aqui é confundir com data: "03/12" também é 3 de
+     dezembro. Por isso só aceitamos duas formas — com palavra-chave
+     em qualquer lugar ("PARC 3/12"), ou o número no FIM da
+     descrição, que é onde as faturas o colocam. Uma data solta no
+     meio do nome da loja não vira parcela.                        */
+
+  var COM_PALAVRA = /\b(?:parc(?:ela)?s?\.?|presta[çc][aã]o)\s*:?\s*(\d{1,2})\s*(?:\/|\s+de\s+)\s*(\d{1,2})\b/i;
+  var NO_FIM      = /(?:^|[\s(\-])(\d{1,2})\s*\/\s*(\d{1,2})\s*\)?\s*$/;
+
+  Fin.lerParcelaDoMemo = function (memo) {
+    var s = String(memo || '').trim();
+    if (!s) return null;
+
+    var m = s.match(COM_PALAVRA) || s.match(NO_FIM);
+    if (!m) return null;
+
+    var numero = parseInt(m[1], 10);
+    var total  = parseInt(m[2], 10);
+
+    // 1/1 não é parcelamento, é compra à vista escrita de outro jeito.
+    // Acima de 48 não existe na prática e provavelmente é outra coisa.
+    if (!(total >= 2 && total <= 48)) return null;
+    if (!(numero >= 1 && numero <= total)) return null;
+
+    // A descrição sem o "3/12" no fim: é ela que identifica a compra
+    // ao longo dos meses, já que o número muda a cada fatura.
+    var descricao = s.replace(m[0], ' ').replace(/\s+/g, ' ').trim();
+
+    return { numero: numero, total: total, descricao: descricao || s };
+  };
+
+  /* Id derivado, não sorteado: a fatura de setembro e a de outubro
+     trazem a MESMA compra com número diferente ("3/12" e "4/12").
+     Derivando o id do que não muda — quem recebeu, em quantas vezes,
+     e o valor da parcela — as duas chegam ao mesmo registro e se
+     fundem, em vez de virarem duas compras iguais na tela.          */
+  Fin.idDaParcela = function (descricao, total, valorParcela) {
+    var chave = Fin.chaveDestinatario(descricao) || 'sem-nome';
+    var centavos = Math.round((Number(valorParcela) || 0) * 100);
+    return 'parc:' + chave + ':' + total + ':' + centavos;
+  };
+
+  /* O mês da primeira parcela, a partir da parcela atual.
+     `mesISO` é o mês da compra, tipo '2026-08'.                    */
+  Fin.primeiraParcela = function (mesISO, numero) {
+    var p = String(mesISO || '').split('-');
+    var ano = parseInt(p[0], 10), mes = parseInt(p[1], 10);
+    if (!ano || !mes) return mesISO;
+
+    var indice = ano * 12 + (mes - 1) - (numero - 1);
+    var a = Math.floor(indice / 12), m2 = (indice % 12) + 1;
+    return a + '-' + (m2 < 10 ? '0' : '') + m2;
+  };
+
+  /* Pagamento de fatura no extrato da conta corrente.
+
+     NÃO filtramos isto sozinhos. Se a pessoa não importar a fatura
+     daquele mês, este pagamento é o único registro do gasto e
+     precisa contar. Quem sabe disso é ela.                          */
+  var PAGAMENTO_CARTAO =
+    /pagamento[\s.]*(de\s*)?(fatura|cart[aã]o)|pag[\s.]*fatura|fatura\s*cart[aã]o|pagto[\s.]*cart/i;
+
+  Fin.ehPagamentoDeCartao = function (memo) {
+    return PAGAMENTO_CARTAO.test(String(memo || ''));
+  };
+
+  /* Linhas que não são compra: encargos, e o pagamento da fatura
+     anterior aparecendo dentro da própria fatura (crédito). */
+  var CREDITO_NA_FATURA =
+    /pagamento\s*(efetuado|recebido)|pgto\s*(efetuado|recebido)|cr[ée]dito\s*de\s*pagamento|estorno/i;
+
+  Fin.ehCreditoDaFatura = function (memo) {
+    return CREDITO_NA_FATURA.test(String(memo || ''));
+  };
+
   Fin.palpiteDetalhado = function (memo, tipo) {
     var texto = String(memo || '').toLowerCase();
     var disponiveis = Fin.catsDe(tipo);
