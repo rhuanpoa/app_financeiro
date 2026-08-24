@@ -680,6 +680,38 @@
     input.click();
   }
 
+  /* Guarda uma compra parcelada vinda da fatura.
+
+     O id é derivado de quem recebeu, do prazo e do valor da parcela —
+     nunca sorteado. A fatura de setembro traz "4/12" da MESMA geladeira
+     que a de agosto trouxe como "3/12"; sem id derivado, importar as
+     duas faturas encheria a tela de Parcelas de geladeiras repetidas.
+
+     Devolve true se criou; false se já existia. */
+  function guardarParcela(p, parc) {
+    var id = Fin.idDaParcela(parc.descricao, parc.total, p.amount);
+    if (dados.parcelas.some(function (x) { return x.id === id; })) return false;
+
+    // O mês da compra menos as parcelas já pagas dá o mês em que começou.
+    var mesDaCompra = String(p.date).slice(0, 7);
+
+    dados.parcelas.push({
+      id: id,
+      atualizado_em: Fin.agora(),
+      _sujo: 1,
+      description: parc.descricao,
+      // O total da compra, e não o da parcela: é assim que a tela conta.
+      total: Math.round(p.amount * parc.total * 100) / 100,
+      parcels: parc.total,
+      firstDue: Fin.primeiraParcela(mesDaCompra, parc.numero),
+      dueDay: parseInt(String(p.date).slice(8, 10), 10) || 1,
+      category: p.category || 'Outros',
+      card: p.conta || 'Cartão',
+      origem: 'fatura'
+    });
+    return true;
+  }
+
   function confirmarPendentes() {
     estado.conferencia = null;
     if (!dados.pendentes.length) return;
@@ -698,7 +730,22 @@
     dados.regras = Fin.aprender(dados.regras, dados.pendentes);
     var novasRegras = dados.regras.length - antes;
 
+    var viraramParcela = 0;
+
     dados.pendentes.forEach(function (p) {
+      /* Linha de fatura com "PARC 03/12" vira compra parcelada, e NÃO
+         lançamento. Os dois seria contar duas vezes: como diz o próprio
+         calc.js, "parcelas não viram lançamento, então entram sempre
+         como programadas" — elas já somam no gasto do mês.
+
+         Só vale para linha de fatura: um "3/12" que aparecesse num
+         extrato comum é quase sempre outra coisa. */
+      var parc = p.fatura && p.type === 'out' ? Fin.lerParcelaDoMemo(p.memo) : null;
+      if (parc) {
+        if (guardarParcela(p, parc)) viraramParcela++;
+        return;
+      }
+
       dados.tx.push({
         // Reaproveita o id do pendente: sao colecoes diferentes, entao
         // nao conflitam, e a lapide do pendente nao afeta o lancamento.
@@ -720,7 +767,10 @@
     dados.pendentes = [];
     persistir();
     render();
-    toast(qtd + ' no caixa ✓' +
+    toast((qtd - viraramParcela) + ' no caixa ✓' +
+          (viraramParcela
+            ? ' · ' + viraramParcela + ' viraram compra parcelada'
+            : '') +
           (novasRegras ? ' · aprendi ' + novasRegras + ' destinatário(s)' : ''));
   }
 

@@ -1045,6 +1045,26 @@ window.Fin = window.Fin || {};
          receberia um número errado com cara de certo. Dizer "li
          R$ 1.240 mas a fatura diz R$ 1.890" é muito melhor do que
          acertar às vezes e calar quando erra. */
+      /* Pagamento de fatura no extrato da conta.
+
+         Este é o jeito mais fácil de o número ficar errado sem ninguém
+         perceber: importa-se o extrato, que traz "PAGAMENTO CARTÃO
+         R$ 2.340", e depois a fatura, que traz as 47 compras somando os
+         mesmos R$ 2.340. O gasto do mês dobra, e cada número isolado
+         continua parecendo plausível.
+
+         O app não decide sozinho porque as duas respostas são certas em
+         situações diferentes: quem importa a fatura deve descartar o
+         pagamento; quem não importa precisa dele. */
+      if (v.qtdPagamentoCartao) {
+        h += '<div class="aviso">' +
+               '<b>' + v.qtdPagamentoCartao + ' pagamento(s) de fatura de cartão.</b> ' +
+               'Se você também importa a fatura desse cartão, <b>descarte</b> estas linhas — ' +
+               'senão o mesmo gasto conta duas vezes: uma nas compras da fatura e outra aqui. ' +
+               'Se você não importa a fatura, mantenha: elas são o registro do gasto.' +
+             '</div>';
+      }
+
       var cf = estado.conferencia;
       if (cf) {
         if (cf.temTotal && !cf.bate) {
@@ -1095,6 +1115,16 @@ window.Fin = window.Fin || {};
                          // avisa quando a categoria já veio da sua escolha
                          // anterior, para você saber por que está preenchida
                          (p.aprendido ? ' <em class="marca-aprendido">aprendido</em>' : '') +
+                         // e avisa que esta linha NÃO vira lançamento comum:
+                         // ela vira compra parcelada, com as que faltam
+                         // entrando na Previsão. Melhor dizer antes de
+                         // confirmar do que a pessoa procurar depois.
+                         (p.parcela
+                           ? ' <em class="marca-parcela">' + esc(p.parcela) + '</em>'
+                           : '') +
+                         (p.pagamentoCartao
+                           ? ' <em class="marca-cartao">pagamento de fatura</em>'
+                           : '') +
                        '</div>' +
                      '</div>' +
                      '<div class="amount mono ' + p.amountClass + '">' + p.amountFmt + '</div>' +

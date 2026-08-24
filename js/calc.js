@@ -575,6 +575,21 @@ window.Fin = window.Fin || {};
           type: p.type,
           // "aprendido" quando a categoria veio de uma escolha sua anterior
           aprendido: p.origemPalpite === 'aprendido',
+          // Linha de fatura com parcela: ao confirmar, ela vira compra
+          // parcelada em vez de lançamento comum. Dizer isso na hora da
+          // revisão evita a pessoa procurar depois no lugar errado.
+          parcela: (function () {
+            if (!p.fatura || p.type !== 'out' || !Fin.lerParcelaDoMemo) return '';
+            var x = Fin.lerParcelaDoMemo(p.memo);
+            return x ? 'parcela ' + x.numero + ' de ' + x.total : '';
+          })(),
+          /* Pagamento de fatura visto no extrato da conta corrente.
+             Quem também importa a fatura conta o mesmo dinheiro duas
+             vezes: uma nas compras, outra aqui. Mas quem NÃO importa a
+             fatura precisa desta linha — ela é o único registro do
+             gasto. Por isso o app marca e explica, em vez de decidir. */
+          pagamentoCartao: !p.fatura && p.type === 'out' &&
+                           !!Fin.ehPagamentoDeCartao && Fin.ehPagamentoDeCartao(p.memo),
           meta: d.getDate() + ' ' + Fin.MESES[d.getMonth()] + ' · ' + p.conta,
           amountFmt: (entrada ? '+ ' : '− ') + Fin.fmt(p.amount),
           amountClass: entrada ? 'in' : 'out'
@@ -688,6 +703,12 @@ window.Fin = window.Fin || {};
       temPendentes: dados.pendentes.length > 0,
       // Só dá para confirmar quando todas tiverem categoria escolhida.
       faltaCategoria: dados.pendentes.filter(function (p) { return !p.category; }).length,
+      // Quantos pagamentos de fatura há na fila, para avisar sobre a
+      // contagem dupla antes de a pessoa confirmar.
+      qtdPagamentoCartao: dados.pendentes.filter(function (p) {
+        return !p.fatura && p.type === 'out' &&
+               Fin.ehPagamentoDeCartao && Fin.ehPagamentoDeCartao(p.memo);
+      }).length,
       movimentos: verImportados(dados.tx, contaFiltro, mesAtual),
       previsao: proj
     };

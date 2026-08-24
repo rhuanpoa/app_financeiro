@@ -2116,3 +2116,36 @@ body.deslogado .view { padding: 0; max-width: none; }
 }
 
 .aviso.bom b { color: var(--green); }
+
+/* Marca de "vira compra parcelada" na revisao do extrato.
+
+   Escura, e nao verde: "aprendido", logo ao lado, ja e verde, e duas
+   marcas da mesma cor nao se distinguem de relance. Elas dizem coisas
+   diferentes -- uma explica de onde veio a categoria, esta avisa que o
+   lancamento vai virar outra coisa. */
+.marca-parcela {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--deep);
+  color: var(--on-deep);
+  padding: 1px 6px;
+  border-radius: 6px;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+/* Marca de "isto é pagamento de fatura de cartão".
+   Âmbar, distinta das outras duas: ela não descreve o lançamento, ela
+   pede uma decisão — manter ou descartar. */
+.marca-cartao {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  background: #fdf1dc;
+  color: #8a6a2a;
+  padding: 1px 6px;
+  border-radius: 6px;
+  margin-left: 4px;
+  white-space: nowrap;
+}
