@@ -196,10 +196,32 @@ window.Fin = window.Fin || {};
     return copia;
   }
 
-  // Depois que o servidor confirmou, a marca sai.
-  function limparMarcas(dados) {
+  /* Tira a marca SO do que foi realmente enviado.
+
+     Limpar tudo parecia equivalente e nao e: um lancamento criado
+     ENQUANTO a sincronizacao estava no ar nao entrou no envio, mas
+     perdia a marca junto com os outros. Ele ficava sem marca e sem ter
+     subido -- nunca mais seria enviado, e o app dizia que estava tudo
+     sincronizado. Some do outro aparelho sem ninguem perceber.        */
+  function limparMarcas(dados, enviadas) {
+    var foram = {};
+    (enviadas || []).forEach(function (l) { foram[l.colecao + '|' + l.id] = 1; });
+
     Fin.COLECOES.forEach(function (colecao) {
-      (dados[colecao] || []).forEach(function (r) { delete r._sujo; });
+      (dados[colecao] || []).forEach(function (r) {
+        if (foram[colecao + '|' + r.id]) delete r._sujo;
+      });
+    });
+  }
+
+  // Mesma coisa para as lapides: as que surgiram durante o envio ficam.
+  function limparLapides(dados, enviadas) {
+    var foram = {};
+    (enviadas || []).forEach(function (l) {
+      if (l.apagado) foram[l.colecao + '|' + l.id] = 1;
+    });
+    dados.apagados = (dados.apagados || []).filter(function (a) {
+      return !foram[a.colecao + '|' + a.id];
     });
   }
 
@@ -242,6 +264,8 @@ window.Fin = window.Fin || {};
     e.erro = '';
     var marcador = lerMarcador();
     var baixados = 0, enviados = 0;
+    // Guardado para, no fim, limpar a marca so do que de fato subiu.
+    var enviadas = [];
 
     /* 1. baixar */
     return comLimite(
@@ -258,6 +282,7 @@ window.Fin = window.Fin || {};
 
         /* 2. enviar */
         var linhas = aEnviar(dados);
+        enviadas = linhas;
         enviados = linhas.length;
         if (!linhas.length) return { data: null, error: null };
 
@@ -284,10 +309,9 @@ window.Fin = window.Fin || {};
           });
       })
       .then(function () {
-        // Contado ao servidor: as marcas saem e as lápides também.
-        // Guardar as lápides aqui só faria o localStorage crescer sempre.
-        limparMarcas(dados);
-        dados.apagados = [];
+        // Contado ao servidor: sai a marca do que subiu, e só dele.
+        limparMarcas(dados, enviadas);
+        limparLapides(dados, enviadas);
 
         e.rodando = false;
         e.ultimoOk = new Date().toISOString();

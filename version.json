@@ -1,5 +1,5 @@
 {
-  "versao": "v25",
-  "data": "2026-08-21",
+  "versao": "v26",
+  "data": "2026-08-22",
   "nota": "Versao publicada no GitHub Pages. O app compara este arquivo com a versao que esta rodando no aparelho. Mantenha igual a Fin.VERSAO em js/store.js e a VERSAO em sw.js."
 }

@@ -469,6 +469,26 @@ window.Fin = window.Fin || {};
     return itens;
   }
 
+  // Exposto para os testes conseguirem as linhas cruas de um PDF.
+  Fin.linhasDoPDF = function (buffer) {
+    var lib;
+    return Fin.carregarPDFjs()
+      .then(function (l) { lib = l; return lib.getDocument({ data: buffer }).promise; })
+      .then(function (pdf) {
+        var linhas = [], fila = Promise.resolve();
+        for (var n = 1; n <= pdf.numPages; n++) {
+          (function (pg) {
+            fila = fila.then(function () {
+              return pdf.getPage(pg)
+                .then(function (p) { return p.getTextContent(); })
+                .then(function (tc) { linhas = linhas.concat(linhasDaPagina(tc)); });
+            });
+          })(n);
+        }
+        return fila.then(function () { return linhas; });
+      });
+  };
+
   Fin.lerPDF = function (buffer) {
     var pdfjsLib;
 
@@ -512,10 +532,23 @@ window.Fin = window.Fin || {};
             itens = faturaCaixa(linhas, rotulo || 'Cartão Caixa');
             modo = 'Fatura Caixa';
           } else if (Fin.ehFatura(linhas)) {
-            // Banco que eu não estudei. O leitor genérico tenta, e a
-            // conferência abaixo é que diz se dá para confiar.
-            itens = faturaGenerica(linhas, rotulo || 'Cartão');
-            modo = 'Fatura (formato não reconhecido)';
+            /* Banco que eu não estudei. Primeiro o app tenta se calibrar
+               sozinho: descobre as colunas olhando onde datas e valores
+               se agrupam na página. Foi assim que ele achou, sem
+               conhecê-los, o leiaute do Nubank e o da Caixa.
+
+               Se a calibragem não convencer, cai no leitor mais bruto.
+               Nos dois casos a conferência contra o total declarado é
+               que diz se dá para confiar. */
+            var cal = Fin.calibrarFatura(linhas);
+            if (cal) {
+              itens = faturaCalibrada(linhas, rotulo || 'Cartão', cal);
+              modo = 'Fatura (leiaute deduzido)';
+            }
+            if (!itens || !itens.length) {
+              itens = faturaGenerica(linhas, rotulo || 'Cartão');
+              modo = 'Fatura (formato não reconhecido)';
+            }
           }
 
           if (itens && itens.length) {
@@ -845,6 +878,180 @@ window.Fin = window.Fin || {};
   };
 
   var MES_NUM = /^(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?$/;
+
+  function ehTokenData(t) {
+    return MES_NUM.test(t) || /^\d{1,2}\s+[A-Za-zÇ]{3}$/.test(t);
+  }
+
+  function ehTokenValor(t) {
+    return /^R?\$?\s*[\d.]+,\d{2}\s*[CD]?$/.test(t);
+  }
+
+  /* Descobre as colunas do documento olhando ONDE as datas e os valores
+     se agrupam na página.
+
+     A ideia: um banco que eu nunca vi ainda põe as datas alinhadas numa
+     coluna e os valores em outra — a estrutura é o padrão, não o banco.
+     Assim não é preciso conhecer o formato de cada um, nem mandar a
+     fatura para lugar nenhum para alguém decifrá-la.
+
+     A calibragem sai do próprio arquivo a cada importação, então não há
+     regra guardada para envelhecer quando o banco mudar o leiaute. */
+
+  var TOLERANCIA = 25;
+
+  Fin.calibrarFatura = function (linhas) {
+    var datas = {}, valores = {};
+
+    function contar(mapa, x) {
+      var faixa = Math.round(x / 20) * 20;
+      mapa[faixa] = (mapa[faixa] || 0) + 1;
+    }
+
+    linhas.forEach(function (l) {
+      l.itens.forEach(function (it) {
+        var t = it.t.trim();
+        if (ehTokenData(t)) contar(datas, it.x);
+        else if (ehTokenValor(t)) contar(valores, it.x);
+      });
+    });
+
+    function dominante(mapa) {
+      var melhor = null, qtd = 0;
+      Object.keys(mapa).forEach(function (x) {
+        if (mapa[x] > qtd) { qtd = mapa[x]; melhor = Number(x); }
+      });
+      return melhor === null ? null : { x: melhor, qtd: qtd };
+    }
+
+    var cData = dominante(datas);
+    var cValor = dominante(valores);
+
+    // Menos de três linhas no mesmo padrão não é padrão, é coincidência.
+    if (!cData || !cValor || cData.qtd < 3 || cValor.qtd < 3) return null;
+
+    // O valor tem de ficar à direita da data. Se não ficar, o que
+    // encontrei não são colunas de lançamento.
+    if (cValor.x <= cData.x) return null;
+
+    // A descrição fica na mesma linha ou na seguinte? Conta quantas
+    // linhas com data e valor têm texto entre as duas colunas.
+    var comTexto = 0, semTexto = 0;
+
+    linhas.forEach(function (l) {
+      var temData = false, temValor = false, temMeio = false;
+      l.itens.forEach(function (it) {
+        var t = it.t.trim();
+        if (ehTokenData(t) && Math.abs(it.x - cData.x) <= TOLERANCIA) temData = true;
+        else if (ehTokenValor(t) && Math.abs(it.x - cValor.x) <= TOLERANCIA) temValor = true;
+        else if (it.x > cData.x + TOLERANCIA && it.x < cValor.x - TOLERANCIA) temMeio = true;
+      });
+      if (temData && temValor) { if (temMeio) comTexto++; else semTexto++; }
+    });
+
+    if (!comTexto && !semTexto) return null;
+
+    return {
+      xData: cData.x,
+      xValor: cValor.x,
+      duasLinhas: semTexto > comTexto,
+      linhas: comTexto + semTexto
+    };
+  };
+
+  /* O ano de referência de uma fatura qualquer.
+
+     As linhas quase nunca trazem o ano — vem "03 SET" ou "13/05". Sem
+     descobrir o ano do documento, uma fatura de 2023 importada hoje
+     jogaria tudo em 2026, e os lançamentos apareceriam no mês errado.
+
+     Procura o ano mais recente citado no cabeçalho: é onde ficam o
+     vencimento e o período. Se não achar, usa o ano corrente. */
+  function anoDeReferencia(linhas) {
+    var anos = [];
+    linhas.slice(0, 80).forEach(function (l) {
+      var t = textoDaLinha(l);
+      var m = t.match(/\b(19|20)\d{2}\b/g);
+      if (m) m.forEach(function (a) { anos.push(parseInt(a, 10)); });
+    });
+    if (!anos.length) return null;
+
+    // O maior ano citado: o documento pode mencionar anos antigos em
+    // texto legal ("débitos de 2022 foram quitados"), mas o vencimento
+    // é sempre o mais recente.
+    var maior = Math.max.apply(null, anos);
+    var agora = new Date().getFullYear();
+    // Ano absurdo é ruído de leitura, não referência.
+    return (maior >= 2000 && maior <= agora + 1) ? maior : null;
+  }
+
+  function faturaCalibrada(linhas, rotulo, cal) {
+    var itens = [];
+    var hoje = new Date();
+    var anoRef = anoDeReferencia(linhas);
+    var perto = function (x, alvo) { return Math.abs(x - alvo) <= TOLERANCIA; };
+
+    for (var i = 0; i < linhas.length; i++) {
+      var data = null, valor = null, meio = [];
+
+      linhas[i].itens.forEach(function (it) {
+        var t = it.t.trim();
+        if (!data && ehTokenData(t) && perto(it.x, cal.xData)) { data = t; return; }
+        if (valor === null && ehTokenValor(t) && perto(it.x, cal.xValor)) { valor = t; return; }
+        if (it.x > cal.xData + TOLERANCIA && it.x < cal.xValor - TOLERANCIA) meio.push(t);
+      });
+
+      if (!data || valor === null) continue;
+
+      var memo = meio.join(' ').replace(/\s+/g, ' ').trim();
+
+      // Leiaute de duas linhas: a descrição vem na seguinte.
+      if (!memo && cal.duasLinhas && i + 1 < linhas.length) {
+        var proxima = textoDaLinha(linhas[i + 1]);
+        // A seguinte não pode ser outro lançamento.
+        if (proxima && !ehTokenData(proxima.split(/\s+/)[0] || '')) {
+          memo = proxima;
+          i++;
+        }
+      }
+
+      if (!memo || memo.length < 2) continue;
+
+      var bruto = valor.replace(/R?\$?\s*/, '');
+      var credito = /C$/.test(bruto);
+      var v = valorBR(bruto.replace(/[CD]$/, ''));
+      if (v === null || v === 0) continue;
+
+      var dia, mes, ano;
+      var m = data.match(MES_NUM);
+      if (m) {
+        dia = parseInt(m[1], 10); mes = parseInt(m[2], 10);
+        ano = m[3] ? (m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10)) : null;
+      } else {
+        var p = data.split(/\s+/);
+        dia = parseInt(p[0], 10); mes = MESES_ABREV[semAcento(p[1])]; ano = null;
+      }
+      if (!dia || !mes || mes > 12 || dia > 31) continue;
+      if (ano === null) {
+        if (anoRef) {
+          // Fatura de janeiro traz compras de dezembro: mês bem à frente
+          // do fechamento é do ano anterior.
+          ano = anoRef;
+          if (anoRef === hoje.getFullYear() && mes > hoje.getMonth() + 1) ano = anoRef - 1;
+        } else {
+          ano = mes > (hoje.getMonth() + 1) ? hoje.getFullYear() - 1 : hoje.getFullYear();
+        }
+      }
+
+      itens.push(montarDaFatura(memo, v, ano, mes, dia, rotulo, credito));
+    }
+
+    return itens.filter(Boolean);
+  }
+
+  // Exposto para poder ser medido contra os leitores especificos:
+  // e assim que eu sei se um banco desconhecido seria lido direito.
+  Fin.lerFaturaCalibrada = faturaCalibrada;
 
   function faturaGenerica(linhas, rotulo) {
     var itens = [];
