@@ -503,12 +503,23 @@ window.Fin = window.Fin || {};
           // e so reconhecem o proprio banco, entao um extrato nunca cai
           // neles por engano. O contrario nao vale -- o leitor generico
           // aceita quase tudo e faria uma leitura ruim da fatura.
+          var conferencia = null;
+
           if (ehNubank(linhas)) {
             itens = faturaNubank(linhas, rotulo || 'Cartão Nubank');
             modo = 'Fatura Nubank';
           } else if (ehCaixa(linhas)) {
             itens = faturaCaixa(linhas, rotulo || 'Cartão Caixa');
             modo = 'Fatura Caixa';
+          } else if (Fin.ehFatura(linhas)) {
+            // Banco que eu não estudei. O leitor genérico tenta, e a
+            // conferência abaixo é que diz se dá para confiar.
+            itens = faturaGenerica(linhas, rotulo || 'Cartão');
+            modo = 'Fatura (formato não reconhecido)';
+          }
+
+          if (itens && itens.length) {
+            conferencia = Fin.conferirFatura(itens, linhas);
           }
 
           if (!itens || !itens.length) {
@@ -521,7 +532,7 @@ window.Fin = window.Fin || {};
             modo = 'PDF (genérico)';
           }
 
-          return { formato: modo, itens: itens };
+          return { formato: modo, itens: itens, conferencia: conferencia };
         });
       });
   };
@@ -809,6 +820,135 @@ window.Fin = window.Fin || {};
 
     return itens.filter(Boolean);
   }
+
+  /* ---------- bancos que eu não conheço ----------
+
+     Só consegui estudar Nubank e Caixa. Para os outros existe este
+     leitor genérico — e, junto com ele, uma conferência, porque um
+     leitor genérico acerta às vezes e a pessoa não tem como saber
+     quando errou.
+
+     A diferença mais perigosa entre fatura e extrato: na fatura os
+     valores vêm SEM sinal. O leitor de extrato, ao não achar sinal
+     de menos, classificava tudo como entrada — uma fatura de
+     R$ 3.000 entrava como R$ 3.000 de receita. Aqui, reconhecendo
+     que o documento é uma fatura, o padrão passa a ser saída.       */
+
+  Fin.ehFatura = function (linhas) {
+    var texto = semAcento(linhas.slice(0, 120).map(textoDaLinha).join(' '));
+    var pistas = 0;
+    if (/fatura/.test(texto)) pistas++;
+    if (/cartao de credito|cartao final|limite total|limite de credito/.test(texto)) pistas++;
+    if (/vencimento/.test(texto)) pistas++;
+    if (/lancamentos|transacoes|movimenta/.test(texto)) pistas++;
+    return pistas >= 2;
+  };
+
+  var MES_NUM = /^(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?$/;
+
+  function faturaGenerica(linhas, rotulo) {
+    var itens = [];
+    var hoje = new Date();
+
+    linhas.forEach(function (l) {
+      var data = null, valor = null, desc = [], xValor = -1;
+
+      l.itens.forEach(function (it) {
+        var t = it.t.trim();
+        if (!data && (MES_NUM.test(t) || /^\d{1,2}\s+[A-Za-zÇ]{3}$/.test(t))) { data = t; return; }
+        if (/^R?\$?\s*[\d.]+,\d{2}$/.test(t)) { valor = t; xValor = it.x; return; }
+        desc.push(t);
+      });
+
+      if (!data || valor === null) return;
+
+      // O valor tem de estar à DIREITA da descrição. Sem isso, um
+      // número solto no meio do nome da loja viraria o valor.
+      if (xValor >= 0 && desc.length) {
+        var maisADireita = Math.max.apply(null, l.itens
+          .filter(function (i) { return desc.indexOf(i.t.trim()) !== -1; })
+          .map(function (i) { return i.x; }));
+        if (xValor < maisADireita) return;
+      }
+
+      var memo = desc.join(' ').replace(/\s+/g, ' ').trim();
+      if (!memo || memo.length < 2) return;
+
+      var v = valorBR(valor.replace(/R?\$?\s*/, ''));
+      if (v === null || v === 0) return;
+
+      var dia, mes, ano;
+      var m = data.match(MES_NUM);
+      if (m) {
+        dia = parseInt(m[1], 10); mes = parseInt(m[2], 10);
+        ano = m[3] ? (m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10)) : null;
+      } else {
+        var p = data.split(/\s+/);
+        dia = parseInt(p[0], 10); mes = MESES_ABREV[semAcento(p[1])]; ano = null;
+      }
+      if (!dia || !mes || mes > 12 || dia > 31) return;
+      if (ano === null) {
+        ano = mes > (hoje.getMonth() + 1) ? hoje.getFullYear() - 1 : hoje.getFullYear();
+      }
+
+      itens.push(montarDaFatura(memo, v, ano, mes, dia, rotulo));
+    });
+
+    return itens.filter(Boolean);
+  }
+
+  /* O total que a própria fatura declara.
+
+     É o que permite dizer "li R$ 1.240 mas a fatura diz R$ 1.890" em
+     vez de entregar um número errado com cara de certo. Vale mais para
+     banco desconhecido do que qualquer esperteza no leitor. */
+  var RE_TOTAL =
+    /(total\s*(a\s*pagar|de\s*compras|da\s*fatura)|valor\s*total|total\s*desta\s*fatura)/i;
+
+  Fin.totalDeclarado = function (linhas) {
+    var achados = [];
+
+    linhas.forEach(function (l) {
+      var t = textoDaLinha(l);
+      if (!RE_TOTAL.test(t)) return;
+      var m = t.match(/R?\$?\s*([\d.]+,\d{2})\s*$/);
+      if (!m) return;
+      var v = valorBR(m[1]);
+      if (v !== null && v > 0) {
+        achados.push({ rotulo: t.replace(/\s+/g, ' ').trim(), valor: v });
+      }
+    });
+
+    if (!achados.length) return null;
+
+    // "Total de compras" é o que se compara com a soma dos lançamentos.
+    // "Total a pagar" inclui saldo antigo e juros, e não bate de propósito.
+    var compras = achados.filter(function (a) { return /de\s*compras/i.test(a.rotulo); });
+    return (compras[0] || achados[achados.length - 1]);
+  };
+
+  /* Compara o que li com o que a fatura declara. */
+  Fin.conferirFatura = function (itens, linhas) {
+    var declarado = Fin.totalDeclarado(linhas);
+    if (!declarado) return { temTotal: false };
+
+    var lido = itens
+      .filter(function (i) { return i.type === 'out' && !i.encargo; })
+      .reduce(function (s, i) { return s + i.amount; }, 0);
+
+    var dif = Math.abs(lido - declarado.valor);
+
+    return {
+      temTotal: true,
+      lido: Math.round(lido * 100) / 100,
+      declarado: declarado.valor,
+      rotulo: declarado.rotulo,
+      // Alguns centavos são arredondamento da própria fatura; acima
+      // disso, alguma linha não foi lida ou foi lida errado.
+      bate: dif < 0.10,
+      diferenca: Math.round(dif * 100) / 100
+    };
+  };
 
   /* ---------- comum aos dois ---------- */
 

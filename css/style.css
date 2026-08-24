@@ -2091,3 +2091,28 @@ body.deslogado .view { padding: 0; max-width: none; }
 }
 
 .sync-linha button[disabled] { opacity: .55; }
+
+/* ---------------------------------------------------------
+   Conferência da fatura contra o total que ela declara
+   --------------------------------------------------------- */
+
+/* Vermelho quando a soma não fecha: é o aviso de que a leitura pode
+   estar errada, e a pessoa precisa olhar antes de confirmar. */
+.aviso.ruim {
+  background: #fbeeea;
+  border-color: #efd5cc;
+  color: #8a4a37;
+}
+
+.aviso.ruim b { color: var(--red); }
+
+/* Verde quando bate. Serve para dar confiança no caso comum — sem
+   isso, só existiria aviso quando algo dá errado, e a pessoa nunca
+   saberia que o app conferiu. */
+.aviso.bom {
+  background: #eaf4ee;
+  border-color: #cfe4d6;
+  color: #3d6b51;
+}
+
+.aviso.bom b { color: var(--green); }

@@ -1038,6 +1038,35 @@ window.Fin = window.Fin || {};
              'no histórico e na previsão.' +
            '</div>';
 
+      /* Conferência da fatura contra o total que ela mesma declara.
+
+         Existe porque só foi possível estudar dois bancos. Num formato
+         desconhecido a leitura pode sair torta, e sem isto a pessoa
+         receberia um número errado com cara de certo. Dizer "li
+         R$ 1.240 mas a fatura diz R$ 1.890" é muito melhor do que
+         acertar às vezes e calar quando erra. */
+      var cf = estado.conferencia;
+      if (cf) {
+        if (cf.temTotal && !cf.bate) {
+          h += '<div class="aviso ruim">' +
+                 '<b>A soma não fechou.</b> Li ' + Fin.fmt(cf.lido) +
+                 ' em compras, mas a fatura declara ' + Fin.fmt(cf.declarado) +
+                 ' — diferença de ' + Fin.fmt(cf.diferenca) + '. ' +
+                 'Confira a lista antes de confirmar: pode ter linha faltando ou lida errado.' +
+               '</div>';
+        } else if (cf.temTotal && cf.bate) {
+          h += '<div class="aviso bom">' +
+                 'A soma bate com o total declarado na fatura (' + Fin.fmt(cf.declarado) + ').' +
+               '</div>';
+        } else if (cf.naoReconhecido) {
+          h += '<div class="aviso ruim">' +
+                 '<b>Não reconheci o formato deste banco.</b> Li o que consegui, mas não ' +
+                 'achei um total na fatura para conferir. Confira a lista com atenção ' +
+                 'antes de confirmar.' +
+               '</div>';
+        }
+      }
+
       h += '<div class="acoes-pend">' +
              '<button class="btn-primary" data-action="confirmar-pendentes" type="button">' +
                'Confirmar ' + v.qtdPendentes +

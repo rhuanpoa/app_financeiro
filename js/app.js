@@ -33,6 +33,9 @@
     mesHist: null,
     // Meta sendo editada
     metaEditId: null,
+    // Resultado da conferencia da ultima fatura importada, mostrado na
+    // tela de revisao. Some junto com os pendentes.
+    conferencia: null,
     // Conversa do chat. `mensagens` é o que aparece na tela; `input` é a
     // mesma conversa no formato que a IA entende, incluindo as consultas
     // que ela pediu. Some ao fechar o app: não é histórico, é conversa.
@@ -647,6 +650,16 @@
               return;
             }
 
+            // A conferencia da fatura acompanha a revisao: e na tela de
+            // confirmacao que ela precisa aparecer, nao num aviso que some.
+            estado.conferencia = lido.conferencia || null;
+            if (estado.conferencia && /nao reconhecido/i.test(lido.formato || '')) {
+              estado.conferencia.naoReconhecido = true;
+            }
+            if (!estado.conferencia && /nao reconhecido/i.test(lido.formato || '')) {
+              estado.conferencia = { temTotal: false, naoReconhecido: true };
+            }
+
             dados.pendentes = dados.pendentes.concat(res.novos);
             persistir();
             irPara('movimentacoes');
@@ -668,6 +681,7 @@
   }
 
   function confirmarPendentes() {
+    estado.conferencia = null;
     if (!dados.pendentes.length) return;
 
     var semCategoria = dados.pendentes.filter(function (p) { return !p.category; }).length;
@@ -722,6 +736,7 @@
   }
 
   function descartarPendentes() {
+    estado.conferencia = null;
     if (!dados.pendentes.length) return;
     if (!confirm('Descartar as ' + dados.pendentes.length + ' movimentações não confirmadas?')) return;
     dados.pendentes = [];
