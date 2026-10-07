@@ -53,7 +53,11 @@ window.Fin = window.Fin || {};
            '</div>';
   }
 
-  // Uma linha de lançamento. `apagavel` liga o ✕ à direita.
+  /* Uma linha de lançamento. `apagavel` liga o lápis e o ✕ à direita.
+
+     O lápis vem antes do ✕ de propósito: corrigir um valor é muito mais
+     comum do que apagar, e deixar o destrutivo na ponta reduz o toque
+     errado. */
   function linhaTx(t, apagavel) {
     return '<div class="row">' +
              '<div class="avatar" style="background:' + t.tint + '"><i style="background:' + t.dot + '"></i></div>' +
@@ -63,7 +67,12 @@ window.Fin = window.Fin || {};
              '</div>' +
              '<div class="amount mono ' + t.amountClass + '">' + t.amountFmt + '</div>' +
              (apagavel
-               ? '<button class="del" data-action="del-tx" data-id="' + t.id + '" type="button" aria-label="Apagar">✕</button>'
+               ? '<button class="editar" data-action="edit-tx" data-id="' + t.id + '" type="button" aria-label="Editar">' +
+                   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                     '<path d="M4 20h4l10-10-4-4L4 16v4Z"/><path d="M14 6l4 4"/>' +
+                   '</svg>' +
+                 '</button>' +
+                 '<button class="del" data-action="del-tx" data-id="' + t.id + '" type="button" aria-label="Apagar">✕</button>'
                : '') +
            '</div>';
   }
@@ -314,6 +323,36 @@ window.Fin = window.Fin || {};
      Novo lançamento
      ========================================================= */
 
+  /* A faixa de categoria do lançamento manual, com o aviso de como ela
+     foi preenchida.
+
+     Fica numa função à parte porque o app.js a redesenha sozinha a cada
+     tecla da descrição: redesenhar a tela inteira tiraria o foco do
+     campo e a pessoa perderia o que estava escrevendo. */
+  Fin.telas.areaCategoria = function (tipo, f) {
+    var h = '<div class="label">Categoria';
+
+    // Dizer de onde veio o palpite: sem isso a categoria se preenche
+    // sozinha e parece que o app escolheu por conta própria.
+    if (f.category && !f.categoriaManual && f.categoriaOrigem) {
+      var rotulo = f.categoriaOrigem === 'aprendido'  ? 'você já escolheu isso antes'
+                 : f.categoriaOrigem === 'sua categoria' ? 'pelo nome da sua categoria'
+                 : 'pelo que você escreveu';
+      h += ' <em class="marca-palpite">' + rotulo + '</em>';
+    }
+
+    h += '</div>' + chips(Fin.catsDe(tipo), tipo, f.category);
+
+    if (!f.category) {
+      h += '<div class="hint" style="margin:-6px 0 14px">' +
+             'Escolha uma vez e o app guarda: na próxima, escrevendo o mesmo, ' +
+             'ele preenche sozinho.' +
+           '</div>';
+    }
+
+    return h;
+  };
+
   Fin.telas.add = function (v, estado) {
     var tipo = estado.addType;              // 'out' ou 'in'
     var f = estado.forms[tipo];
@@ -321,14 +360,31 @@ window.Fin = window.Fin || {};
 
     var h = '<div class="screen">';
 
+    var editando = !!estado.editandoId;
+
     h += '<div class="head">' +
-           '<div class="head-title sm">Novo lançamento</div>' + fechar('dash') +
+           '<div class="head-title sm">' +
+             (editando ? 'Editar lançamento' : 'Novo lançamento') +
+           '</div>' + fechar(editando ? 'hist' : 'dash') +
          '</div>';
 
-    h += '<div class="segmented">' +
-           '<button type="button" data-action="set-type" data-type="out" class="' + (!entrada ? 'on' : '') + '">Saída</button>' +
-           '<button type="button" data-action="set-type" data-type="in" class="' + (entrada ? 'on' : '') + '">Entrada</button>' +
-         '</div>';
+    /* Editando, o seletor de Saída/Entrada sai da tela.
+
+       O formulário guarda um rascunho separado para cada tipo, então
+       trocar no meio da edição esvaziaria os campos e a pessoa perderia
+       o que estava corrigindo. Trocar saída por entrada é raro; apagar e
+       lançar de novo resolve, e sem risco de perder dado. */
+    if (!editando) {
+      h += '<div class="segmented">' +
+             '<button type="button" data-action="set-type" data-type="out" class="' + (!entrada ? 'on' : '') + '">Saída</button>' +
+             '<button type="button" data-action="set-type" data-type="in" class="' + (entrada ? 'on' : '') + '">Entrada</button>' +
+           '</div>';
+    } else {
+      h += '<div class="hint" style="text-align:left;margin:0 2px 14px">' +
+             'Corrigindo ' + (entrada ? 'uma <b>entrada</b>' : 'uma <b>saída</b>') +
+             ' já lançada.' +
+           '</div>';
+    }
 
     h += '<div class="amount-field">' +
            '<div class="cap">Valor</div>' +
@@ -339,11 +395,15 @@ window.Fin = window.Fin || {};
            '</div>' +
          '</div>';
 
-    h += '<div class="label">Categoria</div>' +
-         chips(Fin.catsDe(tipo), tipo, f.category);
+    /* A descrição vem ANTES da categoria de propósito: é ela que define
+       a categoria agora. Deixá-la depois faria a pessoa escolher a
+       categoria à mão e só então descobrir que não precisava. */
+    h += '<div class="label">O que foi?</div>' +
+         campo({ form: tipo, field: 'note', value: f.note,
+                 placeholder: entrada ? 'Ex: salário, freela, aluguel recebido'
+                                      : 'Ex: ifood, assaí, uber, farmácia' });
 
-    h += '<div class="label">Descrição (opcional)</div>' +
-         campo({ form: tipo, field: 'note', value: f.note, placeholder: 'Ex: Almoço com a equipe' });
+    h += '<div id="area-categoria">' + Fin.telas.areaCategoria(tipo, f) + '</div>';
 
     h += '<div class="label">Data</div>' +
          campo({ form: tipo, field: 'date', value: f.date, type: 'date' });
@@ -398,8 +458,9 @@ window.Fin = window.Fin || {};
            '</div>';
     }
 
-    h += '<button class="btn-primary" data-action="save-tx" type="button">Salvar ' +
-           (entrada ? 'entrada' : 'saída') + '</button>';
+    h += '<button class="btn-primary" data-action="save-tx" type="button">' +
+           (editando ? 'Salvar alterações' : 'Salvar ' + (entrada ? 'entrada' : 'saída')) +
+         '</button>';
 
     return h + '</div>';
   };

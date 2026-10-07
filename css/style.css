@@ -2149,3 +2149,32 @@ body.deslogado .view { padding: 0; max-width: none; }
   margin-left: 4px;
   white-space: nowrap;
 }
+
+/* Por que a categoria se preencheu sozinha.
+   Discreto de propósito: é explicação, não alerta — fica ao lado do
+   rótulo "Categoria", em peso leve, sem competir com os chips. */
+.marca-palpite {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--track);
+  padding: 1px 6px;
+  border-radius: 6px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+/* Lápis de editar, na linha de lançamento do Histórico.
+   Cinza como o ✕ ao lado: nenhum dos dois deve competir com o valor,
+   que é a informação da linha. */
+.editar {
+  color: #c9ccc0;
+  padding: 4px 2px 4px 8px;
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.editar svg { width: 16px; height: 16px; }
+.editar:active { color: var(--deep); }

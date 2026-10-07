@@ -33,6 +33,9 @@
     mesHist: null,
     // Meta sendo editada
     metaEditId: null,
+    // Lancamento sendo corrigido. null = a tela de lancamento esta no
+    // modo "novo".
+    editandoId: null,
     // Resultado da conferencia da ultima fatura importada, mostrado na
     // tela de revisao. Some junto com os pendentes.
     conferencia: null,
@@ -287,6 +290,15 @@
 
   function irPara(tela, push) {
     fecharMenu();
+    /* Sair da tela de lancamento cancela a edicao.
+
+       Sem isto o id ficaria de pe, e o PROXIMO "novo lancamento" iria
+       sobrescrever o lancamento que estava sendo corrigido em vez de
+       criar um novo -- um apagamento silencioso. */
+    if (tela !== 'add' && estado.editandoId) {
+      estado.editandoId = null;
+      estado.forms[estado.addType] = Fin.formsEmBranco()[estado.addType];
+    }
     estado.screen = tela;
     if (push !== false) {
       history.pushState({ screen: tela }, '', '#' + tela);
@@ -350,6 +362,46 @@
      Ações de gravação
      --------------------------------------------------------- */
 
+  /* Preenche a categoria a partir do que foi escrito na descrição.
+     Só mexe no que o app mesmo preencheu: escolha sua fica de pé. */
+  function palpitarCategoria(tipo) {
+    var f = estado.forms[tipo];
+    if (f.categoriaManual) return;
+
+    var p = Fin.palpiteDetalhado(f.note, tipo);
+    f.category = p.category;
+    f.categoriaOrigem = p.origem;
+
+    var area = document.getElementById('area-categoria');
+    if (area) area.innerHTML = Fin.telas.areaCategoria(tipo, f);
+  }
+
+  /* Carrega um lancamento ja feito no formulario, para corrigir.
+
+     A categoria entra como escolha MANUAL de proposito: ela ja foi
+     decidida uma vez, e o palpite nao pode trocar o que a pessoa
+     escolheu so porque ela encostou na descricao. */
+  function abrirEdicao(id) {
+    var t = dados.tx.find(function (x) { return x.id === id; });
+    if (!t) { toast('Não achei esse lançamento'); return; }
+
+    estado.addType = t.type;
+    estado.editandoId = id;
+    estado.forms[t.type] = {
+      // O campo de valor é escrito à brasileira, com vírgula.
+      amount: String(t.amount).replace('.', ','),
+      category: t.category || '',
+      note: t.note || '',
+      date: t.date || Fin.hojeISO(),
+      fixed: !!t.fixed,
+      repete: t.repete || 0,
+      repeteOutro: false,
+      categoriaManual: true,
+      categoriaOrigem: ''
+    };
+    irPara('add');
+  }
+
   function salvarLancamento() {
     var tipo = estado.addType;
     var f = estado.forms[tipo];
@@ -357,10 +409,25 @@
 
     if (!valor || !f.category) { toast('Preencha valor e categoria'); return; }
 
-    dados.tx.push({
-      id: Fin.novoId(),
-      atualizado_em: Fin.agora(),
-      _sujo: 1,
+    /* Aprende do lançamento manual, igual à importação: "esse nome é
+       dessa categoria". É isto que faz você escolher uma vez e nunca
+       mais — e vale tanto para quando você corrige o palpite quanto
+       para quando confirma. */
+    var aprendeu = 0;
+    var palavra = Fin.palavraChave(f.note);
+    if (palavra) {
+      var antes = dados.regras.length;
+      /* Aprende pela PALAVRA, não pela frase: quem escreveu "ifood
+         pedido da noite" espera que "ifood almoço" caia na mesma
+         categoria. Guardar a frase faria cada variação de texto
+         precisar ser ensinada de novo. */
+      dados.regras = Fin.aprender(dados.regras, [{
+        memo: palavra, type: tipo, category: f.category
+      }]);
+      aprendeu = dados.regras.length - antes;
+    }
+
+    var campos = {
       type: tipo,
       amount: valor,
       category: f.category,
@@ -370,12 +437,49 @@
       // Duração da repetição em meses (0 = sem data para acabar).
       // Só faz sentido quando `fixed` está ligado.
       repete: f.fixed ? Math.max(0, parseInt(f.repete, 10) || 0) : 0
-    });
+    };
+
+    var editando = estado.editandoId;
+
+    if (editando) {
+      var achou = false;
+      dados.tx = dados.tx.map(function (t) {
+        if (t.id !== editando) return t;
+        achou = true;
+        /* Mantém o id, o fitid e a origem: o id é o que liga este
+           registro ao do outro aparelho, e o fitid é o que impede o
+           lançamento de ser importado de novo do mesmo extrato. Trocar
+           qualquer dos dois criaria uma duplicata disfarçada.
+
+           A data de alteração sobe para esta edição vencer a cópia
+           antiga quando os dois aparelhos se encontrarem. */
+        return Object.assign({}, t, campos, {
+          atualizado_em: Fin.agora(),
+          _sujo: 1
+        });
+      });
+
+      if (!achou) { toast('Não achei esse lançamento'); return; }
+
+      estado.editandoId = null;
+      estado.forms[tipo] = Fin.formsEmBranco()[tipo];
+      persistir();
+      irPara('hist');
+      toast('Lançamento atualizado ✓' +
+            (aprendeu ? ' · vou lembrar dessa categoria' : ''));
+      return;
+    }
+
+    campos.id = Fin.novoId();
+    campos.atualizado_em = Fin.agora();
+    campos._sujo = 1;
+    dados.tx.push(campos);
 
     estado.forms[tipo] = Fin.formsEmBranco()[tipo];
     persistir();
     irPara('dash');
-    toast(tipo === 'out' ? 'Gasto registrado ✓' : 'Entrada registrada ✓');
+    toast((tipo === 'out' ? 'Gasto registrado ✓' : 'Entrada registrada ✓') +
+          (aprendeu ? ' · vou lembrar dessa categoria' : ''));
   }
 
   function salvarParcela() {
@@ -915,6 +1019,9 @@
       case 'pick-cat': {
         var form = alvo.dataset.form;
         estado.forms[form].category = alvo.dataset.cat;
+        // Escolha sua manda: daqui para frente o palpite nao mexe mais
+        // nesta categoria, mesmo que voce continue digitando.
+        estado.forms[form].categoriaManual = true;
         var faixa = view.querySelector('[data-chips="' + form + '"]');
         if (faixa) {
           faixa.querySelectorAll('.chip').forEach(function (c) {
@@ -976,6 +1083,7 @@
       case 'save-categoria': salvarCategoria(); break;
       case 'del-categoria':  apagarCategoria(id); break;
 
+      case 'edit-tx':     abrirEdicao(id); break;
       case 'del-tx':      apagar('tx', id, 'Removido'); break;
       case 'del-parcela': apagar('parcelas', id, 'Compra removida'); break;
       case 'del-meta':
@@ -1077,6 +1185,18 @@
     if (!el.dataset || !el.dataset.form || !el.dataset.field) return;
 
     estado.forms[el.dataset.form][el.dataset.field] = el.value;
+
+    /* A descrição passa a definir a categoria, com a mesma inteligência
+       que já existia só na importação: o que você escolheu antes para
+       esse mesmo nome, depois a lista de palavras-chave.
+
+       Nunca atropela escolha sua: se você tocou num chip, `categoriaManual`
+       trava o palpite. E redesenha só a faixa de categoria — redesenhar a
+       tela tiraria o foco do campo no meio da digitação. */
+    if ((el.dataset.form === 'out' || el.dataset.form === 'in') &&
+        el.dataset.field === 'note') {
+      palpitarCategoria(el.dataset.form);
+    }
 
     // Exceção 1: a prévia do valor da parcela.
     if (el.dataset.form === 'parcela' &&

@@ -17,7 +17,7 @@ window.Fin = window.Fin || {};
        3. VERSAO em sw.js (troca o cache, senão o celular abre o antigo)
      O botão "Buscar atualização" no menu existe justamente para flagrar
      quando um deles ficou para trás. */
-  Fin.VERSAO = 'v27';
+  Fin.VERSAO = 'v28';
 
   Fin.CATS = [
     { name: 'Alimentação',    color: '#d9822b' },
@@ -252,7 +252,13 @@ window.Fin = window.Fin || {};
 
      "Pix - Enviado · 05/07 15:32 HS DO BRASIL LTDA." -> "hs do brasil"   */
 
-  Fin.chaveDestinatario = function (memo) {
+  /* Limpa o descritivo e devolve as palavras.
+
+     Separado de chaveDestinatario porque as duas precisam da mesma
+     limpeza mas de recortes diferentes: a chave usa as três primeiras
+     palavras, e a palavra-chave precisa varrer a frase inteira para
+     achar a primeira que identifica algo. */
+  Fin.palavrasDoMemo = function (memo) {
     var s = String(memo || '').toLowerCase();
 
     // sem acentos, para "SAUDE" e "SAÚDE" darem na mesma
@@ -262,17 +268,58 @@ window.Fin = window.Fin || {};
     var partes = s.split('·');
     if (partes.length > 1) s = partes.slice(1).join(' ');
 
-    s = s
+    return s
       .replace(/\d{2}\/\d{2}(\/\d{2,4})?(\s+\d{2}:\d{2})?/g, ' ') // data e hora
       .replace(/\b\d{6,}\b/g, ' ')                                // CPF, CNPJ, documento
       .replace(/\b(ltda|s\/?a|me|epp|eireli|filial|cia)\b/g, ' ') // sufixos de empresa
       .replace(/[*#|\-_.,;:()]+/g, ' ')
       .replace(/\b\d+\b/g, ' ')                                   // números soltos
       .replace(/\s+/g, ' ')
-      .trim();
+      .trim()
+      .split(' ')
+      .filter(Boolean);
+  };
 
+  Fin.chaveDestinatario = function (memo) {
     // as primeiras palavras já identificam; o resto costuma ser ruído
-    return s.split(' ').filter(Boolean).slice(0, 3).join(' ');
+    return Fin.palavrasDoMemo(memo).slice(0, 3).join(' ');
+  };
+
+  /* A palavra que identifica o que você escreveu à mão.
+
+     O extrato do banco traz "MERCPAGO*LOJA FULANO 1234", e ali as
+     primeiras palavras são o estabelecimento. Já quando a pessoa digita,
+     ela escreve "ifood pedido da noite" — e o que identifica é a
+     PRIMEIRA palavra, não a frase.
+
+     Guardar a frase inteira faria cada variação precisar ser ensinada de
+     novo: "ifood pedido da noite" não serviria para "ifood almoço". Por
+     isso o lançamento manual aprende por palavra.
+
+     Palavras que não identificam nada ficam de fora — ensinar "compra"
+     ou "pix" sequestraria metade dos lançamentos futuros. */
+  var VAZIAS = [
+    'compra', 'compras', 'pagamento', 'pagto', 'pago', 'pix', 'ted', 'doc',
+    'transferencia', 'transf', 'conta', 'contas', 'boleto', 'debito', 'credito',
+    'cartao', 'para', 'com', 'sem', 'por', 'meu', 'minha', 'uma', 'dos', 'das',
+    'que', 'the', 'valor', 'gasto', 'despesa', 'recebi', 'recebido'
+  ];
+
+  Fin.palavraChave = function (texto) {
+    /* Varre a frase INTEIRA, não só as três primeiras palavras.
+
+       "pix para o joão" tem as três primeiras todas descartáveis, e a
+       palavra que identifica é a quarta. Cortar antes de filtrar deixava
+       esse caso sem chave nenhuma. */
+    var palavras = Fin.palavrasDoMemo(texto).filter(function (p) {
+      return p.length >= 3 && VAZIAS.indexOf(p) === -1;
+    });
+    if (!palavras.length) return '';
+
+    // Com quatro letras ou mais já identifica bem; abaixo disso só serve
+    // se não houver nada melhor na frase.
+    var boa = palavras.find(function (p) { return p.length >= 4; });
+    return boa || palavras[0];
   };
 
   /* ---------- regras aprendidas ----------
@@ -287,13 +334,41 @@ window.Fin = window.Fin || {};
 
   Fin.regras = function () { return regrasAprendidas; };
 
-  // A categoria que você escolheu da última vez para este destinatário.
+  /* A categoria que você escolheu da última vez para este destinatário.
+
+     Primeiro tenta a chave exata. Não achando, aceita uma regra cuja
+     chave esteja CONTIDA no que foi escrito, em palavras inteiras.
+
+     Isso existe por causa da digitação à mão: quem ensinou "tatuagem"
+     espera que "tatuagem na costela" caia na mesma categoria. Sem a
+     contenção, cada variação de texto precisaria ser ensinada de novo e
+     não pareceria aprendizado nenhum.
+
+     Entre várias regras que casam, vence a de chave MAIS LONGA — a mais
+     específica. É isso que impede "mercado" (Mercado) de atropelar
+     "mercado livre" (Compra virtual): as duas casam em "mercado livre
+     celular", e a mais longa ganha.                                    */
   Fin.regraPara = function (memo, tipo) {
     var chave = Fin.chaveDestinatario(memo);
     if (!chave) return null;
-    return regrasAprendidas.find(function (r) {
+
+    var exata = regrasAprendidas.find(function (r) {
       return r.chave === chave && r.type === tipo;
-    }) || null;
+    });
+    if (exata) return exata;
+
+    // Espaços nas pontas para casar só palavra inteira: "pao" não pode
+    // casar dentro de "paozinho".
+    var alvo = ' ' + chave + ' ';
+    var melhor = null;
+
+    regrasAprendidas.forEach(function (r) {
+      if (r.type !== tipo || !r.chave) return;
+      if (alvo.indexOf(' ' + r.chave + ' ') === -1) return;
+      if (!melhor || r.chave.length > melhor.chave.length) melhor = r;
+    });
+
+    return melhor;
   };
 
   Fin.carregar = function () {
@@ -360,8 +435,13 @@ window.Fin = window.Fin || {};
     return {
       // `repete` = por quantos meses o lançamento se repete, contando o
       // próprio. 0 significa "sem data para acabar".
-      out:     { amount: '', category: '', note: '', date: hoje, fixed: false, repete: 0, repeteOutro: false },
-      in:      { amount: '', category: '', note: '', date: hoje, fixed: false, repete: 0, repeteOutro: false },
+      // categoriaManual: voce tocou num chip, entao o palpite para de
+      // mexer. categoriaOrigem: de onde veio o palpite, para a tela poder
+      // explicar por que a categoria se preencheu sozinha.
+      out:     { amount: '', category: '', note: '', date: hoje, fixed: false, repete: 0, repeteOutro: false,
+                 categoriaManual: false, categoriaOrigem: '' },
+      in:      { amount: '', category: '', note: '', date: hoje, fixed: false, repete: 0, repeteOutro: false,
+                 categoriaManual: false, categoriaOrigem: '' },
       parcela: { description: '', total: '', parcels: '', dueDay: '',
                  firstDue: hoje.slice(0, 7), card: '', category: '' },
       goal:    { name: '', target: '', saved: '' },
